@@ -4,12 +4,12 @@
 #
 # Variabel yang perlu diisi di menu Environment variables Docker Manager:
 #   TUNNEL_TOKEN   token dari Cloudflare Zero Trust > Tunnels (RAHASIA, jangan dibagikan)
-# Ganti USERNAME dengan nama pengguna/organisasi GitHub (huruf kecil), misalnya: ghcr.io/kazokugames/bumn-tes:latest
+# Image: ghcr.io/kazokugames/bumn-tes:latest (dibangun otomatis oleh GitHub Actions, lihat .github/workflows/image.yml)
 name: bumn-tes
 
 services:
   app:
-    image: ghcr.io/USERNAME/bumn-tes:latest
+    image: ghcr.io/kazokugames/bumn-tes:latest
     pull_policy: always
     container_name: bumn-tes-app
     restart: unless-stopped
