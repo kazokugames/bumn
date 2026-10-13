@@ -1,134 +1,108 @@
-# Menjalankan di VPS (Hostinger, Ubuntu)
+# Hosting di VPS yang sudah menjalankan sistem lain (Docker)
 
-Aplikasi ini Next.js dengan penyimpanan SQLite (satu file, tanpa server database terpisah).
-Jalankan **satu proses saja** (jangan mode cluster): pembatas laju login ada di memori proses.
+Aplikasi berjalan sebagai **proyek Docker terpisah bernama `bumn-tes`**: container, jaringan, dan volume sendiri.
+Aturan keselamatan untuk server yang dipakai bersama:
+
+- Tidak menyentuh container yang sudah ada (`backend`, `database`, `frontend`, `proxy`, `traefik`).
+- Tidak memasang nginx/Node di host, tidak mengubah `ufw`, dan tidak memakai port 80/443.
+- Semua perintah Docker memakai `-p bumn-tes` (skrip `deploy/update.sh` sudah begitu). Jangan jalankan `docker system prune`, `docker compose down` tanpa `-p bumn-tes`, atau perintah apa pun pada container lain.
+- Batas sumber daya: 512 MB RAM dan 0,75 CPU untuk aplikasi (diatur di `deploy/docker-compose.yml`).
+- Database berupa satu file SQLite di volume `bumn-tes-data`: tidak memakai server database, port, atau akun database. Container `database` yang ada tidak disentuh.
 
 ## 0. Sebelum go-live (di komputer pengembangan)
 ```bash
-node check.js            # di folder D:\bumn: validasi bank soal, generator, config, sinkron web/data
+node check.js            # di folder repo: validasi bank soal, generator, config, sinkron web/data
 node sync.js             # bila check.js meminta
 cd web
-npm run lint             # harus tanpa peringatan
-npm run uji:sanitasi     # HTML hasil ujian aman dirender (XSS) dan soal asli tidak rusak
-npm run build
-```
-Uji alur akun/API pada server lokal dengan database sementara (lihat komentar di `scripts/uji-api.mjs`).
-
-## 1. Persiapan server
-Dirancang agar **tidak mengganggu sistem lain di VPS**: user terpisah, Node milik user itu sendiri (nvm), database berupa satu file sendiri, dan hanya mendengarkan di `127.0.0.1`.
-```bash
-# 1) User khusus (tidak menyentuh user/aplikasi lain)
-sudo adduser --disabled-password bumn
-sudo apt install -y nginx git          # lewati bila sudah terpasang
-
-# 2) Node.js 24 hanya untuk user bumn (nvm) - TIDAK mengganti Node sistem yang dipakai aplikasi lain
-sudo -iu bumn
-curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-exec bash -l
-nvm install 24 && node -v              # harus >= 22.13
-npm i -g pm2                           # pm2 ini milik user bumn, terpisah dari pm2 user lain
-exit
-
-# 3) Firewall: hanya SSH dan web (lewati bila sudah diatur)
-sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
-```
-Disarankan juga `unattended-upgrades` (patch keamanan otomatis) dan login SSH dengan kunci, bukan password.
-
-### Bila VPS sudah dipakai sistem lain
-- **Database:** aplikasi ini memakai file SQLite (`DB_PATH`), bukan MySQL/PostgreSQL. Tidak ada server database, port, atau akun database yang bisa bentrok, dan tidak menyentuh database sistem lain. Cukup beri folder `/var/lib/bumn` hanya untuk user `bumn`.
-- **Port:** pilih port yang bebas. Cek: `ss -tlnp | grep -E ':3000'`. Bila terpakai, ganti `3000` di pm2 dan nginx (mis. `PORT=3100 bash deploy/update.sh`).
-- **nginx:** buat berkas `server` baru dengan `server_name` domain/subdomain sendiri; jangan mengubah blok milik sistem lain. Selalu `sudo nginx -t` sebelum reload.
-- **Memori:** aplikasi memakai kira-kira 150-250 MB RAM. Cek `free -h`; bila VPS sempit, tambahkan swap 1-2 GB.
-- **Node berbeda:** karena Node dipasang lewat nvm milik user `bumn`, aplikasi lain tetap memakai Node-nya sendiri.
-- **Nama proses pm2:** `bumn` (ubah dengan `NAMA_PM2=...` bila bentrok dengan proses lain di user yang sama; biasanya tidak karena pm2 per user).
-
-## 2. Ambil kode dari GitHub dan bangun
-Repo berisi seluruh proyek; aplikasi yang dihosting ada di subfolder `web/`.
-```bash
-sudo mkdir -p /opt/bumn /var/lib/bumn /var/backups/bumn && sudo chown -R bumn:bumn /opt/bumn /var/lib/bumn /var/backups/bumn && sudo chmod 700 /var/lib/bumn
-sudo -iu bumn
-git clone https://github.com/USERNAME/NAMA-REPO.git /opt/bumn
-cd /opt/bumn/web && npm ci && npm run build
-```
-**Repo private?** Buat kunci khusus di VPS dan daftarkan sebagai *Deploy key* (read-only):
-```bash
-ssh-keygen -t ed25519 -C "vps-bumn" -f ~/.ssh/bumn_deploy -N ""
-cat ~/.ssh/bumn_deploy.pub     # salin ke GitHub: Repo > Settings > Deploy keys > Add (JANGAN centang write access)
-printf 'Host github-bumn
-  HostName github.com
-  User git
-  IdentityFile ~/.ssh/bumn_deploy
-  IdentitiesOnly yes
-' >> ~/.ssh/config
-git clone git@github-bumn:USERNAME/NAMA-REPO.git /opt/bumn
+npm run lint && npm run uji:sanitasi && npm run build
 ```
 
-## 3. Buat akun master (sekali)
+## 1. Periksa server dulu (hanya membaca, tidak mengubah apa pun)
 ```bash
-cd /opt/bumn/web
-DB_PATH=/var/lib/bumn/app.db npm run buat-master -- namamaster "Nama Lengkap"
+docker ps --format '{{.Names}}  {{.Ports}}'      # lihat container dan port yang sudah terpakai
+ss -tlnp | head -30                              # port yang didengarkan di host
+free -h && df -h /                               # memori dan disk
+docker compose version                           # perlu Docker Compose v2
+```
+Catat port yang **kosong** untuk `APP_PORT` (bawaan 3100). Port 80 dan 443 milik sistem yang sudah ada; jangan dipakai.
+
+## 2. Ambil kode dan atur konfigurasi
+```bash
+git clone https://github.com/USERNAME/NAMA-REPO.git /opt/bumn      # repo private: lihat bagian "Repo private" di bawah
+cd /opt/bumn/deploy
+cp .env.example .env && nano .env                                  # isi APP_PORT, dan TUNNEL_TOKEN bila memakai tunnel
+```
+
+## 3. Jalankan
+```bash
+bash /opt/bumn/deploy/update.sh
+```
+Skrip melakukan `git pull`, membangun image `bumn-tes`, menjalankan container, dan menunggu status *healthy*.
+Cek: `docker ps --filter name=bumn-tes` dan `curl http://127.0.0.1:3100/api/health` (di server) -> `{"ok":true,...}`.
+
+## 4. Buat akun master (sekali)
+```bash
+docker exec -it bumn-tes-app node scripts/buat-master.mjs namamaster "Nama Lengkap"
 ```
 Password diketik di prompt (tidak tampil). Menjalankan lagi dengan username master yang sama = atur ulang password master.
 
-## 4. Jalankan dengan pm2
-```bash
-cd /opt/bumn/web
-DB_PATH=/var/lib/bumn/app.db COOKIE_SECURE=1 \
-  pm2 start npm --name bumn -- start -- -H 127.0.0.1 -p 3000
-pm2 save && pm2 startup     # jalankan perintah yang ditampilkan agar hidup lagi setelah reboot
-```
-`-H 127.0.0.1` penting: aplikasi hanya menerima lalu lintas dari nginx. Alamat IP klien dibaca dari header
-`X-Forwarded-For`; bila aplikasi terbuka langsung ke internet, header itu bisa dipalsukan dan pembatas laju bisa dilewati.
+## 5. Membuka akses dari internet (tanpa menyentuh proxy yang ada)
+Container hanya terbuka di `127.0.0.1` server. Pilih salah satu:
 
-## 5. nginx + HTTPS
-`/etc/nginx/sites-available/bumn`:
-```nginx
-server {
-  server_name contoh.domainanda.com;
-  client_max_body_size 5m;          # hasil ujian membawa detail jawaban
-  location / {
-    proxy_pass http://127.0.0.1:3000;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-For $remote_addr;      # jangan teruskan header dari klien
-    proxy_set_header X-Forwarded-Proto $scheme;
-  }
-}
-```
-```bash
-sudo ln -s /etc/nginx/sites-available/bumn /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d contoh.domainanda.com
-```
-Setelah HTTPS berjalan, tambahkan di blok `server` (443): `add_header Strict-Transport-Security "max-age=31536000" always;`.
-Cookie sesi hanya bekerja lewat HTTPS karena `COOKIE_SECURE=1`. Bila login "berhasil" tetapi langsung keluar lagi, hampir pasti penyebabnya HTTPS belum aktif.
+**A. Cloudflare Tunnel (disarankan: HTTPS tanpa membuka port, tanpa mengubah proxy/traefik)**
+1. Domain Anda harus memakai nameserver Cloudflare (gratis).
+2. Cloudflare Zero Trust > Networks > Tunnels > *Create a tunnel* > *Cloudflared* > salin **token**.
+3. Di tunnel itu: *Public hostname* -> Subdomain `tes`, Domain Anda, Service `HTTP` `app:3000`.
+4. Di `deploy/.env`: `TUNNEL_TOKEN=<token>`, `IP_HEADER=cf-connecting-ip`, `COOKIE_SECURE=1`.
+5. Jalankan `bash /opt/bumn/deploy/update.sh` lagi (skrip otomatis menyalakan container `bumn-tes-tunnel` bila token terisi).
+   Container tunnel hanya membuat koneksi **keluar** ke Cloudflare dan berada di jaringan `bumn-tes-net` miliknya sendiri.
 
-## 6. Cadangan dan pemantauan
-```bash
-# cron harian (crontab -e sebagai user bumn): salinan konsisten, menyimpan 14 terakhir
-15 2 * * * bash -lc 'cd /opt/bumn/web && DB_PATH=/var/lib/bumn/app.db node scripts/cadangkan.mjs /var/backups/bumn 14'   # bash -lc agar Node dari nvm ikut terbaca
-```
-Salin folder cadangan ke luar server secara berkala (rclone/scp). **Cadangan yang hanya ada di server yang sama bukan cadangan.**
-Pemantauan uptime: arahkan monitor (UptimeRobot dsb.) ke `https://domain/api/health` (harus `{"ok":true,...}`).
-Log aplikasi: `pm2 logs bumn`.
+**B. Uji sementara lewat IP (TANPA HTTPS, hanya untuk mencoba)**
+Di `deploy/.env`: `BIND=0.0.0.0`, `APP_PORT=<port bebas>`, `COOKIE_SECURE=0`, `IP_HEADER=none`. Buka port itu di **panel Firewall Hostinger** (bukan `ufw`),
+lalu akses `http://IP-SERVER:PORT`. Password dikirim tanpa enkripsi: jangan memakai password asli, dan kembalikan ke 127.0.0.1 setelah selesai.
 
-Memulihkan: hentikan aplikasi (`pm2 stop bumn`), salin file cadangan ke `/var/lib/bumn/app.db`, hapus `app.db-wal` dan `app.db-shm`, jalankan lagi.
+**C. Lewat proxy yang sudah ada** — tidak dilakukan, karena sistem itu tidak boleh diubah. Bila suatu saat Anda mengizinkan, cukup arahkan satu host baru ke `127.0.0.1:APP_PORT`.
 
-## 7. Memperbarui aplikasi
-Di komputer: `git push`. Di VPS (sebagai user `bumn`):
+## 6. Cadangan dan pemulihan
+Seluruh data ada di volume `bumn-tes-data` (`/data/app.db`). Cadangan yang konsisten (aman saat aplikasi berjalan), lalu salin keluar dari volume:
 ```bash
-bash /opt/bumn/deploy/update.sh      # git pull, npm ci, build, pm2 restart, cek /api/health
+docker exec bumn-tes-app node scripts/cadangkan.mjs /data/backup 14
+docker cp bumn-tes-app:/data/backup/. /var/backups/bumn-tes/
 ```
-Skrip yang sama juga menjalankan aplikasi pertama kali bila belum ada di pm2 (langkah 4 bisa dilewati; langkah 3 tetap wajib dulu).
-Data tidak terhapus saat pembaruan (skema memakai `PRAGMA user_version` untuk migrasi di masa depan).
-Jangan mengubah file langsung di VPS: `git pull --ff-only` akan gagal bila ada perubahan lokal.
+Cron harian di server (`crontab -e`):
+```
+15 2 * * * docker exec bumn-tes-app node scripts/cadangkan.mjs /data/backup 14 && docker cp bumn-tes-app:/data/backup/. /var/backups/bumn-tes/
+```
+Salin `/var/backups/bumn-tes` ke luar server secara berkala (rclone/scp). **Cadangan yang hanya ada di server yang sama bukan cadangan.**
+
+Memulihkan (hanya container aplikasi ini yang dihentikan):
+```bash
+cd /opt/bumn/deploy && docker compose -p bumn-tes --env-file .env stop app
+docker cp /var/backups/bumn-tes/bumn-TANGGAL.db bumn-tes-app:/data/app.db
+docker exec -u root bumn-tes-app sh -c 'rm -f /data/app.db-wal /data/app.db-shm && chown node:node /data/app.db'
+docker compose -p bumn-tes --env-file .env start app
+```
+
+## 7. Memperbarui, memantau, dan menghapus
+- **Perbarui:** di komputer `git push`; di server `bash /opt/bumn/deploy/update.sh`. Data tidak terhapus (volume terpisah). Kembali ke versi lama: `git checkout <commit-lama>` lalu jalankan skrip itu.
+- **Pantau:** `docker logs --tail 100 bumn-tes-app`, `docker stats --no-stream bumn-tes-app`. Arahkan pemantau uptime ke `https://domain-anda/api/health`.
+- **Berhenti sementara:** `cd /opt/bumn/deploy && docker compose -p bumn-tes --env-file .env stop`.
+- **Hapus aplikasi (data tetap):** `docker compose -p bumn-tes --env-file .env down`. **Jangan** menambah `-v` kecuali Anda yakin ingin menghapus seluruh data user.
+
+### Repo private
+Buat kunci khusus di server dan daftarkan sebagai *Deploy key* (read-only) di GitHub (Repo > Settings > Deploy keys, jangan centang write access):
+```bash
+ssh-keygen -t ed25519 -C "vps-bumn" -f ~/.ssh/bumn_deploy -N ""
+cat ~/.ssh/bumn_deploy.pub
+printf 'Host github-bumn\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/bumn_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+git clone git@github-bumn:USERNAME/NAMA-REPO.git /opt/bumn
+```
 
 ## Catatan keamanan dan batasan
-- **Pendaftaran terbuka.** Pembatas: 10 pendaftaran/jam/IP, 10 percobaan masuk/15 menit per IP+username, 40 percobaan masuk/15 menit per IP. Untuk menutup pendaftaran: `REGISTRASI=tutup` (master tetap bisa menambah user).
-- Master melihat semua hasil dan jawaban user (ini diberitahukan di halaman masuk).
-- Password di-hash dengan scrypt (N=32768). Sesi 30 hari, dicabut saat user dinonaktifkan atau password diatur ulang. Cookie `HttpOnly`, `SameSite=Lax`, `Secure`.
-- HTML soal dari server (halaman "Lihat jawaban") dibersihkan dengan DOMPurify karena user bisa memalsukan detail jawaban lewat API. CSP produksi membatasi koneksi hanya ke asal sendiri.
-- Pembatas laju bersifat per-proses dan hilang saat restart. Bukan pengganti `fail2ban`/WAF bila diserang serius.
-- Dependensi `postcss` yang dibawa Next 15 punya peringatan `npm audit` (bug di tahap build CSS, tidak menyentuh input pengguna saat berjalan). Perbaikannya ada di Next 16 (perubahan besar); pantau pembaruan Next 15.
-- Lupa password master: ulangi langkah 3 dengan username yang sama.
-- Kapasitas yang diuji: 200 permintaan bersamaan ke API dalam ~0,2 detik, 30 pendaftaran serentak dalam <1 detik di PC pengembangan. Ukuran hasil ujian: terbesar ±140 KB (tes Matriks, SVG) sebelum kompresi, biasanya 10–90 KB; detail jawaban dikompres gzip di database.
+- **Pendaftaran terbuka.** Pembatas: 10 pendaftaran/jam/IP; login dibatasi per IP+username (10/15 mnt), per IP (40/15 mnt), dan per username (30/15 mnt, tanpa melihat IP). Tutup pendaftaran dengan `REGISTRASI=tutup` di `deploy/.env` (master tetap bisa menambah user).
+- Pembatas laju ada di memori satu proses dan hilang saat container dimulai ulang. Jalankan **satu container** saja.
+- `IP_HEADER` menentukan header IP klien yang dipercaya. Dengan Cloudflare Tunnel pakai `cf-connecting-ip` (tidak bisa dipalsukan klien). Jangan membuka container langsung ke internet dengan `IP_HEADER` selain `none`.
+- Master melihat semua hasil dan jawaban user (diberitahukan di halaman masuk). Password di-hash scrypt; sesi 30 hari dan dicabut saat user dinonaktifkan/password diatur ulang; cookie `HttpOnly`, `SameSite=Lax`, `Secure`.
+- HTML soal dari server di halaman "Lihat jawaban" dibersihkan DOMPurify; CSP produksi membatasi koneksi ke asal sendiri.
+- `npm audit` melaporkan peringatan `postcss` bawaan Next 15 (hanya tahap build CSS, tidak menyentuh input pengguna saat berjalan).
+- **Belum diuji:** `docker build`/`docker compose` pada server Anda (Docker tidak terpasang di komputer pengembangan). Langkah di dalam Dockerfile (install, build, buang dependensi dev, jalankan, buat master) sudah diuji di luar Docker.
