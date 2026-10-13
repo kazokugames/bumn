@@ -15,24 +15,37 @@ npm run build
 Uji alur akun/API pada server lokal dengan database sementara (lihat komentar di `scripts/uji-api.mjs`).
 
 ## 1. Persiapan server
+Dirancang agar **tidak mengganggu sistem lain di VPS**: user terpisah, Node milik user itu sendiri (nvm), database berupa satu file sendiri, dan hanya mendengarkan di `127.0.0.1`.
 ```bash
-# Pakai user biasa (bukan root) untuk menjalankan aplikasi
+# 1) User khusus (tidak menyentuh user/aplikasi lain)
 sudo adduser --disabled-password bumn
-# Node.js 24 LTS (minimal 22.13), nginx, pm2
-curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
-sudo apt install -y nodejs nginx
-sudo npm i -g pm2
-node -v    # harus >= 22.13
+sudo apt install -y nginx git          # lewati bila sudah terpasang
 
-# Firewall: hanya SSH dan web
+# 2) Node.js 24 hanya untuk user bumn (nvm) - TIDAK mengganti Node sistem yang dipakai aplikasi lain
+sudo -iu bumn
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+exec bash -l
+nvm install 24 && node -v              # harus >= 22.13
+npm i -g pm2                           # pm2 ini milik user bumn, terpisah dari pm2 user lain
+exit
+
+# 3) Firewall: hanya SSH dan web (lewati bila sudah diatur)
 sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```
 Disarankan juga `unattended-upgrades` (patch keamanan otomatis) dan login SSH dengan kunci, bukan password.
 
+### Bila VPS sudah dipakai sistem lain
+- **Database:** aplikasi ini memakai file SQLite (`DB_PATH`), bukan MySQL/PostgreSQL. Tidak ada server database, port, atau akun database yang bisa bentrok, dan tidak menyentuh database sistem lain. Cukup beri folder `/var/lib/bumn` hanya untuk user `bumn`.
+- **Port:** pilih port yang bebas. Cek: `ss -tlnp | grep -E ':3000'`. Bila terpakai, ganti `3000` di pm2 dan nginx (mis. `PORT=3100 bash deploy/update.sh`).
+- **nginx:** buat berkas `server` baru dengan `server_name` domain/subdomain sendiri; jangan mengubah blok milik sistem lain. Selalu `sudo nginx -t` sebelum reload.
+- **Memori:** aplikasi memakai kira-kira 150-250 MB RAM. Cek `free -h`; bila VPS sempit, tambahkan swap 1-2 GB.
+- **Node berbeda:** karena Node dipasang lewat nvm milik user `bumn`, aplikasi lain tetap memakai Node-nya sendiri.
+- **Nama proses pm2:** `bumn` (ubah dengan `NAMA_PM2=...` bila bentrok dengan proses lain di user yang sama; biasanya tidak karena pm2 per user).
+
 ## 2. Ambil kode dari GitHub dan bangun
 Repo berisi seluruh proyek; aplikasi yang dihosting ada di subfolder `web/`.
 ```bash
-sudo mkdir -p /opt/bumn /var/lib/bumn /var/backups/bumn && sudo chown -R bumn:bumn /opt/bumn /var/lib/bumn /var/backups/bumn
+sudo mkdir -p /opt/bumn /var/lib/bumn /var/backups/bumn && sudo chown -R bumn:bumn /opt/bumn /var/lib/bumn /var/backups/bumn && sudo chmod 700 /var/lib/bumn
 sudo -iu bumn
 git clone https://github.com/USERNAME/NAMA-REPO.git /opt/bumn
 cd /opt/bumn/web && npm ci && npm run build
@@ -93,7 +106,7 @@ Cookie sesi hanya bekerja lewat HTTPS karena `COOKIE_SECURE=1`. Bila login "berh
 ## 6. Cadangan dan pemantauan
 ```bash
 # cron harian (crontab -e sebagai user bumn): salinan konsisten, menyimpan 14 terakhir
-15 2 * * * cd /opt/bumn/web && DB_PATH=/var/lib/bumn/app.db node scripts/cadangkan.mjs /var/backups/bumn 14
+15 2 * * * bash -lc 'cd /opt/bumn/web && DB_PATH=/var/lib/bumn/app.db node scripts/cadangkan.mjs /var/backups/bumn 14'   # bash -lc agar Node dari nvm ikut terbaca
 ```
 Salin folder cadangan ke luar server secara berkala (rclone/scp). **Cadangan yang hanya ada di server yang sama bukan cadangan.**
 Pemantauan uptime: arahkan monitor (UptimeRobot dsb.) ke `https://domain/api/health` (harus `{"ok":true,...}`).
