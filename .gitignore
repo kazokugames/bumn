@@ -1,0 +1,20 @@
+# dependensi dan hasil build
+node_modules/
+.next/
+out/
+
+# data dan rahasia: jangan pernah masuk repo
+var/
+backup/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+
+# lain-lain
+*.log
+.DS_Store
+Thumbs.db
+next-env.d.ts
