@@ -9,6 +9,23 @@ Aturan keselamatan untuk server yang dipakai bersama:
 - Batas sumber daya: 512 MB RAM dan 0,75 CPU untuk aplikasi (diatur di `deploy/docker-compose.yml`).
 - Database berupa satu file SQLite di volume `bumn-tes-data`: tidak memakai server database, port, atau akun database. Container `database` yang ada tidak disentuh.
 
+## Jalur A — tanpa akses terminal server (Docker Manager Hostinger)
+Image dibangun otomatis oleh GitHub Actions (`.github/workflows/image.yml`) dan disimpan di GHCR; server hanya mengambilnya. Tidak ada `docker build` di server dan tidak ada port yang dibuka.
+
+1. **Push ke `main`.** Buka tab **Actions** di GitHub: job `uji` (check.js, lint, uji sanitasi) lalu `image` harus hijau (±5 menit).
+2. **Jadikan paket image public** (sekali): GitHub > foto profil > *Your profile* > **Packages** > `bumn-tes` > *Package settings* > *Change visibility* > **Public**.
+   Alasannya: server tidak bisa login ke registry tanpa terminal. Isi image tidak berisi rahasia: tidak ada `.env`, database, atau kunci (dikecualikan `.dockerignore`), dan bank soal serta generator sudah terkirim ke browser setiap pengunjung. Yang ikut terlihat hanya kode server (tidak rahasia). Repo tetap private.
+3. **Cloudflare Tunnel:** Cloudflare Zero Trust > Networks > Tunnels > *Create a tunnel* > *Cloudflared* > salin **token**. Di tunnel itu: *Public hostname* -> subdomain `tes`, domain Anda, Service `HTTP` `app:3000`. (Domain harus memakai nameserver Cloudflare.)
+4. **Docker Manager Hostinger:** buat proyek compose baru bernama `bumn-tes`. Tempel isi `deploy/docker-compose.hostinger.yml` (ganti `USERNAME` dengan nama GitHub Anda, huruf kecil), isi variabel lingkungan `TUNNEL_TOKEN`, lalu deploy. Nama menu bisa sedikit berbeda; bila tidak ada opsi menempel compose atau mengisi variabel, kabari saya.
+5. **Buat akun master:** di Docker Manager, buka proyek `bumn-tes` > container `app` > **Terminal**, lalu jalankan:
+   `node scripts/buat-master.mjs namamaster "Nama Lengkap"` (password diketik di prompt).
+6. **Cek:** status container `app` harus Running/healthy, `tunnel` Running, dan `https://tes.domainanda.com` terbuka. Container lama tidak boleh berubah statusnya.
+7. **Pembaruan:** push -> tunggu Actions hijau -> di Docker Manager, deploy ulang proyek `bumn-tes` (compose memakai `pull_policy: always`, jadi image terbaru diambil). Data tetap di volume `bumn-tes-data`.
+
+Batasan jalur A: tanpa terminal host, cadangan otomatis ke luar server tidak tersedia dari skrip kami. Yang ada adalah cadangan mingguan seluruh disk dari Hostinger (menu *Backups*). Bila kelak ada akses terminal, gunakan bagian "Cadangan dan pemulihan" di bawah.
+
+# Jalur B — dengan akses terminal server (SSH / web console)
+
 ## 0. Sebelum go-live (di komputer pengembangan)
 ```bash
 node check.js            # di folder repo: validasi bank soal, generator, config, sinkron web/data

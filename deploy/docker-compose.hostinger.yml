@@ -1,0 +1,53 @@
+# Untuk ditempel di Hostinger > Docker Manager > Compose (tanpa terminal server).
+# Proyek terpisah "bumn-tes": tidak menyentuh container backend/database/frontend/proxy/traefik.
+# Tidak membuka port apa pun di server: akses publik lewat Cloudflare Tunnel (koneksi keluar saja).
+#
+# Variabel yang perlu diisi di menu Environment variables Docker Manager:
+#   TUNNEL_TOKEN   token dari Cloudflare Zero Trust > Tunnels (RAHASIA, jangan dibagikan)
+# Ganti USERNAME dengan nama pengguna/organisasi GitHub (huruf kecil), misalnya: ghcr.io/kazokugames/bumn-tes:latest
+name: bumn-tes
+
+services:
+  app:
+    image: ghcr.io/USERNAME/bumn-tes:latest
+    pull_policy: always
+    container_name: bumn-tes-app
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/app.db
+      COOKIE_SECURE: "1"
+      IP_HEADER: cf-connecting-ip
+      REGISTRASI: buka          # isi "tutup" bila akun hanya boleh dibuat master
+    volumes:
+      - bumn-tes-data:/data
+    networks: [bumn-net]
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 256
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: bumn-tes-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    networks: [bumn-net]
+    depends_on: [app]
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  bumn-net:
+    name: bumn-tes-net
+
+volumes:
+  bumn-tes-data:
+    name: bumn-tes-data
