@@ -1,0 +1,20 @@
+# Untuk UGREEN NAS (aplikasi Docker > Project > Import compose file).
+# Akses publik lewat Nginx Proxy Manager yang sudah jalan di NAS:
+#   Proxy Host -> http://IP-NAS:3100 , Force SSL.
+# Data tersimpan di ./data (folder data di dalam path proyek) -> mudah di-backup.
+services:
+  app:
+    image: ghcr.io/kazokugames/bumn-tes:latest
+    container_name: bumn-tes-app
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/app.db
+      COOKIE_SECURE: "1"
+      IP_HEADER: none
+      REGISTRASI: tutup
+    ports:
+      - "3100:3000"
+    volumes:
+      - ./data:/data
+    mem_limit: 512m
+    cpus: 0.75
