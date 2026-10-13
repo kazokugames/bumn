@@ -1,0 +1,57 @@
+# Proyek Docker TERPISAH ("bumn-tes"): jaringan, volume, dan nama container sendiri.
+# Tidak memakai, mengubah, atau menyambung ke container/proxy/database lain di server.
+# Jalankan SELALU dengan nama proyek ini (skrip deploy/update.sh sudah melakukannya):
+#   docker compose -p bumn-tes --env-file deploy/.env -f deploy/docker-compose.yml ...
+name: bumn-tes
+
+services:
+  app:
+    build:
+      context: ../web
+    image: bumn-tes:latest
+    container_name: bumn-tes-app
+    restart: unless-stopped
+    environment:
+      COOKIE_SECURE: ${COOKIE_SECURE:-1}
+      REGISTRASI: ${REGISTRASI:-buka}
+      IP_HEADER: ${IP_HEADER:-cf-connecting-ip}
+    volumes:
+      - bumn-tes-data:/data
+    # Terbuka hanya di localhost server secara bawaan (tidak bisa diakses dari internet dan tidak memakai port 80/443).
+    ports:
+      - "${BIND:-127.0.0.1}:${APP_PORT:-3100}:3000"
+    networks: [bumn-net]
+    # Batas sumber daya agar sistem lain di server tidak terganggu.
+    mem_limit: 512m
+    cpus: 0.75
+    pids_limit: 256
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  # Opsional: HTTPS publik lewat Cloudflare Tunnel (koneksi keluar saja, tidak membuka port dan tidak menyentuh proxy yang ada).
+  # Aktifkan dengan:  --profile tunnel   (butuh TUNNEL_TOKEN di deploy/.env)
+  tunnel:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    container_name: bumn-tes-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    networks: [bumn-net]
+    depends_on: [app]
+    mem_limit: 128m
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+networks:
+  bumn-net:
+    name: bumn-tes-net
+
+volumes:
+  bumn-tes-data:
+    name: bumn-tes-data

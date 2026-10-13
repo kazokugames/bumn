@@ -19,9 +19,15 @@ export async function wajibMaster() {
   if (err) return { err };
   return u.role === "master" ? { u } : { err: galat("Khusus master.", 403) };
 }
+// Alamat IP klien untuk pembatas laju. Hanya percaya header yang diisi proxy tepercaya:
+//   IP_HEADER=cf-connecting-ip   (Cloudflare Tunnel; Cloudflare menimpa header ini, tidak bisa dipalsukan klien)
+//   IP_HEADER=x-forwarded-for    (default; nginx dengan "X-Forwarded-For $remote_addr")
+//   IP_HEADER=none               (tanpa proxy: semua klien dianggap satu; header tidak dipercaya)
 export async function ipKlien() {
+  const nama = (process.env.IP_HEADER || "x-forwarded-for").toLowerCase();
+  if (nama === "none") return "lokal";
   const h = await headers();
-  return (h.get("x-forwarded-for") || "lokal").split(",")[0].trim();
+  return (h.get(nama) || "lokal").split(",")[0].trim();
 }
 // Tolak permintaan tulis yang bukan JSON (lintas situs tidak bisa mengirim JSON tanpa izin CORS).
 export const MAKS_BODY = 4_000_000; // byte

@@ -13,6 +13,8 @@ export async function POST(request) {
   const ip = await ipKlien();
   if (!batasi(`masuk-ip:${ip}`, 40, 15 * 60 * 1000)) return galat("Terlalu banyak percobaan dari alamat ini. Coba lagi dalam 15 menit.", 429);
   if (!batasi(`masuk:${ip}:${body.username.toLowerCase()}`, 10, 15 * 60 * 1000)) return galat("Terlalu banyak percobaan. Coba lagi dalam 15 menit.", 429);
+  // batas per username tanpa melihat IP: menahan tebakan password walau IP dipalsukan (konsekuensi: akun bisa terkunci 15 menit)
+  if (!batasi(`masuk-user:${body.username.toLowerCase()}`, 30, 15 * 60 * 1000)) return galat("Terlalu banyak percobaan untuk akun ini. Coba lagi dalam 15 menit.", 429);
   const u = db().prepare("SELECT id, username, nama, role, pw, aktif FROM users WHERE username = ?").get(body.username);
   const cocok = await cekPassword(body.password, u ? u.pw : await hashPalsu());
   if (!u || !cocok) return galat("Username atau password salah.", 401);

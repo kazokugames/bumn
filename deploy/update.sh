@@ -1,33 +1,28 @@
 #!/usr/bin/env bash
-# Perbarui aplikasi di VPS dari GitHub, lalu mulai ulang. Jalankan sebagai user aplikasi (bukan root):
+# Perbarui aplikasi di server dari GitHub lalu bangun ulang container "bumn-tes".
 #   bash /opt/bumn/deploy/update.sh
-# Pertama kali (proses belum ada di pm2) skrip ini juga menjalankannya.
+# Hanya menyentuh proyek Docker "bumn-tes". Container/proxy/database lain TIDAK disentuh.
 set -euo pipefail
 
-REPO_DIR="${REPO_DIR:-/opt/bumn}"
-DB_PATH="${DB_PATH:-/var/lib/bumn/app.db}"
-PORT="${PORT:-3000}"
-NAMA_PM2="${NAMA_PM2:-bumn}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT/deploy"
+[ -f .env ] || { echo "Belum ada deploy/.env. Salin dari deploy/.env.example dan isi dulu."; exit 1; }
 
-cd "$REPO_DIR"
+PROFIL=""; SERVIS="app"
+if grep -Eq '^TUNNEL_TOKEN=.+' .env; then PROFIL="--profile tunnel"; SERVIS="app tunnel"; fi
+dc() { docker compose -p bumn-tes --env-file .env -f docker-compose.yml "$@"; }
+
 echo "==> Mengambil perubahan terbaru"
-git pull --ff-only
+(cd "$ROOT" && git pull --ff-only)
 
-cd web
-echo "==> Memasang dependensi"
-npm ci
-echo "==> Membangun aplikasi"
-npm run build
+echo "==> Membangun dan menjalankan (hanya proyek bumn-tes)"
+dc $PROFIL up -d --build $SERVIS
 
-echo "==> Menjalankan ulang"
-if pm2 describe "$NAMA_PM2" >/dev/null 2>&1; then
-  pm2 restart "$NAMA_PM2" --update-env
-else
-  DB_PATH="$DB_PATH" COOKIE_SECURE=1 pm2 start npm --name "$NAMA_PM2" -- start -- -H 127.0.0.1 -p "$PORT"
-  pm2 save
-fi
-
-sleep 3
-echo "==> Cek kesehatan"
-curl -fsS "http://127.0.0.1:${PORT}/api/health" && echo
-echo "Selesai."
+echo "==> Menunggu aplikasi sehat"
+for i in $(seq 1 30); do
+  s="$(docker inspect --format '{{.State.Health.Status}}' bumn-tes-app 2>/dev/null || echo mulai)"
+  [ "$s" = "healthy" ] && { echo "Aplikasi sehat."; exit 0; }
+  sleep 2
+done
+echo "Aplikasi belum sehat. Lihat log: docker logs --tail 50 bumn-tes-app"
+exit 1

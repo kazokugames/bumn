@@ -12,7 +12,7 @@ Ada akun user dan akun master yang memantau hasil tryout.
 | `sync.js` | Menyalin sumber soal ke `web/data` (jalankan setelah mengubah soal/config) |
 | `check.js` | Validasi bank soal, generator, config, dan sinkron `web/data` |
 | `index.html`, `app.js`, `style.css` | Versi vanilla offline (tanpa akun, buka langsung di browser) |
-| `deploy/update.sh` | Skrip pembaruan di VPS (git pull, build, restart) |
+| `deploy/` | `docker-compose.yml`, `.env.example`, dan `update.sh` untuk hosting di VPS |
 
 ## Menjalankan di komputer sendiri
 Butuh Node.js 22.13 atau lebih baru.
@@ -29,9 +29,10 @@ node check.js    # validasi (DEEP=1 node check.js untuk sampel generator 10x leb
 node sync.js     # salin ke web/data, lalu commit hasilnya
 ```
 
-## Hosting di VPS (via GitHub)
-Lihat **`web/DEPLOY.md`**. Ringkasnya: `git clone` ke `/opt/bumn`, buat master, jalankan `bash deploy/update.sh`, pasang nginx + HTTPS.
-Pembaruan berikutnya cukup `git push` dari komputer lalu `bash /opt/bumn/deploy/update.sh` di VPS.
+## Hosting di VPS (via GitHub + Docker, terisolasi)
+Lihat **`web/DEPLOY.md`**. Aplikasi berjalan sebagai proyek Docker terpisah (`bumn-tes`) dan tidak menyentuh container, proxy, atau database lain di server.
+Ringkasnya: `git clone` ke `/opt/bumn`, salin `deploy/.env.example` ke `deploy/.env`, jalankan `bash deploy/update.sh`, buat master, lalu buka akses lewat Cloudflare Tunnel.
+Pembaruan berikutnya: `git push` dari komputer, lalu `bash /opt/bumn/deploy/update.sh` di server.
 
 ## Yang tidak boleh masuk repo
 Database (`var/`, `*.db`), berkas `.env*`, `node_modules`, dan `.next` sudah diabaikan lewat `.gitignore`. Jangan menaruh password atau kunci di berkas apa pun.
