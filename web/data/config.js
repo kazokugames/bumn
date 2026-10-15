@@ -151,8 +151,78 @@ export const CONFIG = {
       komposisi: { "Pemrograman & Algoritma": 10, "Basis Data": 10, "Jaringan & Keamanan": 10, "Sistem Komputer": 10 },
       passingGrade: 60,       // verifikasi ke pengumuman resmi (perkiraan)
       deskripsi: "Tes keahlian bidang jurusan Informatika/TI: pemrograman dan algoritma, basis data, jaringan dan keamanan, serta sistem komputer."
+    },
+    {
+      id: "skd",
+      nama: "CPNS — SKD (TWK, TIU, TKP)",
+      kelompok: "CPNS",
+      jenis: "SKD",
+      verifikasi: true,       // hanya soal berpenanda `verif` yang dipakai pada topik yang punya soal terverifikasi (TWK)
+      bank: ["bumn-wk", "sipss", "cpns-tkp"],
+      durasiMenit: 100,       // verifikasi ke pengumuman resmi
+      jumlahSoal: 110,        // verifikasi ke pengumuman resmi (TWK 30, TIU 35, TKP 45)
+      komposisi: { "Wawasan Kebangsaan": 30, "TIU Verbal": 10, "TIU Numerik": 15, "TIU Figural": 10, "TKP Pelayanan Publik": 8, "TKP Jejaring Kerja": 8, "TKP Sosial Budaya": 8, "TKP TIK": 7, "TKP Profesionalisme": 7, "TKP Anti Radikalisme": 7 },
+      // Lulus hanya jika SEMUA subtes mencapai ambang (poin). TWK/TIU: 5 poin per jawaban benar; TKP: 1-5 per opsi.
+      // Ambang CPNS reguler: TWK 65, TIU 80, TKP 166 (pola Kepmen PANRB 321/2024); keputusan CPNS 2026 belum terkonfirmasi, cek SSCASN/JDIH PANRB.
+      // Angka ambang adalah perkiraan dari beberapa periode terakhir, cek pengumuman resmi tiap periode.
+      subtes: [
+        { nama: "TWK", topik: ["Wawasan Kebangsaan"], poinBenar: 5, ambang: 65 },
+        { nama: "TIU", topik: ["TIU Verbal", "TIU Numerik", "TIU Figural"], poinBenar: 5, ambang: 80 },
+        { nama: "TKP", topik: ["TKP Pelayanan Publik", "TKP Jejaring Kerja", "TKP Sosial Budaya", "TKP TIK", "TKP Profesionalisme", "TKP Anti Radikalisme"], poinBenar: 0, ambang: 166 }
+      ],
+      passingGrade: 57,       // = total ambang 311 dari 550 poin (perkiraan)
+      deskripsi: "Seleksi Kompetensi Dasar CPNS/Kedinasan: Tes Wawasan Kebangsaan, Tes Intelegensia Umum, dan Tes Karakteristik Pribadi (skor 1–5 per opsi). Lulus bila setiap subtes mencapai ambang batas."
+    },
+    {
+      id: "skd-kedinasan",
+      nama: "Kedinasan — SKD (STAN, IPDN, dan sekolah kedinasan lain)",
+      kelompok: "Kedinasan",
+      jenis: "SKD",
+      verifikasi: true,       // hanya soal berpenanda `verif` yang dipakai pada topik yang punya soal terverifikasi (TWK)
+      bank: ["bumn-wk", "sipss", "cpns-tkp"],
+      durasiMenit: 100,       // 110 soal / 100 menit (dilaporkan rctiplus.com, media 2026); verifikasi ke pengumuman resmi
+      jumlahSoal: 110,        // TWK 30, TIU 35, TKP 45
+      komposisi: { "Wawasan Kebangsaan": 30, "TIU Verbal": 10, "TIU Numerik": 15, "TIU Figural": 10, "TKP Pelayanan Publik": 8, "TKP Jejaring Kerja": 8, "TKP Sosial Budaya": 8, "TKP TIK": 7, "TKP Profesionalisme": 7, "TKP Anti Radikalisme": 7 },
+      // Ambang SKD sekolah kedinasan 2026: TWK 65, TIU 80, TKP 156 (Kepmen PANRB 406/2026, berlaku 27 Juli 2026), sama pada dua laporan
+      // media (blog.itera.ac.id, rctiplus.com). Dokumen asli: data-jdih.menpan.go.id/dokumen/2026kepmenpanrb406.pdf (belum terbaca langsung).
+      // Jalur afirmasi punya ambang lain (total >= 281 dan TIU >= 55) dan tidak disimulasikan di sini.
+      subtes: [
+        { nama: "TWK", topik: ["Wawasan Kebangsaan"], poinBenar: 5, ambang: 65 },
+        { nama: "TIU", topik: ["TIU Verbal", "TIU Numerik", "TIU Figural"], poinBenar: 5, ambang: 80 },
+        { nama: "TKP", topik: ["TKP Pelayanan Publik", "TKP Jejaring Kerja", "TKP Sosial Budaya", "TKP TIK", "TKP Profesionalisme", "TKP Anti Radikalisme"], poinBenar: 0, ambang: 156 }
+      ],
+      passingGrade: 55,       // = total ambang 301 dari 550 poin
+      deskripsi: "Seleksi Kompetensi Dasar sekolah kedinasan (TWK, TIU, TKP) dengan ambang batas kedinasan: TWK 65, TIU 80, TKP 156. Lulus bila setiap subtes mencapai ambang; lolos ambang belum menjamin lanjut karena ada perangkingan."
+    },
+    {
+      id: "kedinasan-tpa",
+      nama: "Kedinasan — Tes Potensi Akademik (latihan tahap lanjutan)",
+      kelompok: "Kedinasan",
+      jenis: "Tahap lanjutan",
+      bank: ["sipss", "bumn-tkd"],
+      durasiMenit: 60,        // PERKIRAAN: media melaporkan STAN 2026 memakai TPA dan Bahasa Inggris di tahap lanjutan, format resmi belum terkonfirmasi
+      jumlahSoal: 50,         // PERKIRAAN, cek pengumuman resmi kampus
+      komposisi: { "TIU Verbal": 15, "TIU Numerik": 15, "Logika": 10, "TIU Figural": 10 },
+      passingGrade: 60,       // perkiraan
+      deskripsi: "Latihan potensi akademik untuk tahap lanjutan sekolah kedinasan: verbal, numerik, logika, dan figural. Jumlah soal dan durasi hanya perkiraan; format resmi tiap kampus berbeda dan berubah tiap tahun."
+    },
+    {
+      id: "kedinasan-bing",
+      nama: "Kedinasan — Tes Bahasa Inggris (latihan tahap lanjutan)",
+      kelompok: "Kedinasan",
+      jenis: "Tahap lanjutan",
+      bank: "bumn-english",
+      durasiMenit: 45,        // PERKIRAAN, format resmi belum terkonfirmasi
+      jumlahSoal: 40,         // PERKIRAAN
+      komposisi: { "Reading": 15, "Grammar": 15, "Vocabulary": 10 },
+      passingGrade: 60,       // perkiraan
+      deskripsi: "Latihan bahasa Inggris (reading, grammar, vocabulary) untuk tahap lanjutan sekolah kedinasan. Jumlah soal dan durasi hanya perkiraan; cek pengumuman resmi."
     }
-  ]
+  ],
+  // Topik "Belajar dari Nol" di luar tes: jalur fondasi sebelum topik SKD. Tiap topik punya generator di gen.js (soal membawa langkah).
+  belajar: {
+    fondasi: ["Dasar Operasi Hitung", "Dasar Pecahan", "Dasar Desimal dan Persen", "Dasar Perbandingan", "Dasar Aljabar", "Dasar Soal Cerita"]
+  }
 };
 
 // Panduan tahapan per jalur (HTML sederhana).

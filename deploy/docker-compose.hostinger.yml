@@ -17,7 +17,10 @@ services:
       DB_PATH: /data/app.db
       COOKIE_SECURE: "1"
       IP_HEADER: cf-connecting-ip
-      REGISTRASI: buka          # isi "tutup" bila akun hanya boleh dibuat master
+      REGISTRASI: buka          # buka | tutup (hanya master membuat akun) | kode (daftar wajib kode aktivasi)
+      NAMA_BIMBEL: ""           # nama yang tampil di aplikasi, mis. "Bimbel Garuda"
+      WARNA: ""                 # warna utama, mis. "#0f766e" (kosong = bawaan)
+      MASA_UJI_HARI: ""         # angka: pendaftar tanpa kode mendapat masa uji sekian hari (kosong = tanpa batas)
     volumes:
       - bumn-tes-data:/data
     networks: [bumn-net]

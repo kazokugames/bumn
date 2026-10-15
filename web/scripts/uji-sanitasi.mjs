@@ -1,5 +1,5 @@
 // Uji sanitasi HTML (DOMPurify) yang dipakai di halaman tinjau jawaban: payload XSS harus hilang, soal asli harus utuh.
-// Jalankan: node scripts/uji-sanitasi.mjs   (butuh devDependency jsdom). Konfigurasi harus sama dengan bersih() di app/page.jsx.
+// Jalankan: node scripts/uji-sanitasi.mjs   (butuh devDependency jsdom). Konfigurasi harus sama dengan bersih() di app/klien.js.
 import { JSDOM } from "jsdom";
 import createDOMPurify from "dompurify";
 import { createRequire } from "node:module";
@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const GEN = require(path.join(akar, "gen.js"));
 const win = new JSDOM("").window;
 const DOMPurify = createDOMPurify(win);
-// SAMA PERSIS dengan page.jsx
+// SAMA PERSIS dengan app/klien.js
 const bersih = (h) => DOMPurify.sanitize(String(h), {
   USE_PROFILES: { html: true, svg: true },
   FORBID_TAGS: ["form", "input", "button", "textarea", "select", "option", "label", "style", "link", "meta", "base", "iframe", "object", "embed", "a", "img", "video", "audio", "source"],

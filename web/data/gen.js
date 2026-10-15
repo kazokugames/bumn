@@ -1187,12 +1187,769 @@
   G["TIU Figural"] = G.Figural;
   G["Bahasa Inggris"] = G.Grammar.concat(G.Vocabulary);
 
+  // ================= PERLUASAN: MATEMATIKA (kurikulum kelas 11 IPA) =================
+  G.Matematika.push(
+    [1, () => {
+      const p = rnd(2, 5), q = rnd(1, 5), y = rnd(2, 7), d = rnd(1, 5), x = y + d, c1 = p * x + q * y, jwb = x + y;
+      return soal(`Jika ${p}x + ${q}y = ${c1} dan x − y = ${d}, maka nilai x + y adalah...`,
+        `Dari x − y = ${d} diperoleh x = y + ${d}. Substitusi: ${p}(y + ${d}) + ${q}y = ${c1} ⇒ ${p + q}y + ${p * d} = ${c1} ⇒ y = ${y}. Maka x = ${x} dan x + y = ${jwb}.`,
+        opsi(jwb, [jwb + 2, jwb - 2, x, y, jwb + 4, Math.abs(x - y)].filter((v, i, a) => v > 0 && a.indexOf(v) === i)));
+    }],
+    [1, () => {
+      const n1 = rnd(2, 8), satuan = rnd(2, 10) * 5, hasil1 = satuan * n1, n2 = rnd(3, 12), hasil2 = satuan * n2;
+      return soal(`Sebuah mesin dapat mencetak ${hasil1} meter kain dalam ${n1} jam. Banyak kain yang dicetak dalam ${n2} jam (kecepatan sama) adalah...`,
+        `Ini perbandingan senilai. Per jam mesin mencetak ${hasil1}/${n1} = ${satuan} meter. Dalam ${n2} jam: ${satuan} × ${n2} = ${hasil2} meter.`,
+        opsi(hasil2, [hasil2 + satuan, hasil2 - satuan, hasil1 + n2, hasil2 + n2, Math.max(5, hasil2 - n2)].filter((v, i, a) => v > 0 && a.indexOf(v) === i)));
+    }],
+    [1, () => {
+      const p = pick([6, 8, 9, 10, 12]), l = pick([3, 6, 9]), t = pick([3, 6, 9, 12]), v = p * l * t / 3;
+      return soal(`Sebuah limas beraturan alasnya persegi panjang ${p} cm × ${l} cm dengan tinggi ${t} cm. Volumenya (cm³)...`,
+        `V = 1/3 × luas alas × tinggi = 1/3 × (${p} × ${l}) × ${t} = 1/3 × ${p * l} × ${t} = ${v} cm³.`,
+        opsi(v, [p * l * t, v * 3, p * l * t / 2, v + p, v - l].filter((v2, i, a) => v2 > 0 && a.indexOf(v2) === i && v2 !== v)));
+    }],
+    [2, () => {
+      const a = rnd(1, 5), r = pick([2, 3]), n = rnd(5, 8), u = a * Math.pow(r, n - 1);
+      const deret = [0, 1, 2].map((i) => a * Math.pow(r, i));
+      return soal(`Barisan geometri: ${deret.join(", ")}, ... Suku ke-${n} adalah...`,
+        `Rasio r = ${deret[1]}/${deret[0]} = ${r}. U${n} = a·r^(${n - 1}) = ${a} × ${r}^${n - 1} = ${u}.`,
+        opsi(u, [a * Math.pow(r, n), a * Math.pow(r, n - 2), u + a * r, u - a * r, a + n * r].filter((v, i, arr) => v > 0 && arr.indexOf(v) === i && v !== u)));
+    }],
+    [2, () => {
+      const k = rnd(2, 6);
+      return soal(`Jika konsentrasi ion H⁺ suatu larutan 10<sup>−${k}</sup> mol/L, pH larutan adalah... (pH = −log [H⁺])`,
+        `pH = −log [H⁺] = −log 10<sup>−${k}</sup> = −(−${k}) = ${k}.`,
+        opsi(k, [k + 1, k - 1, Math.pow(10, k), 14 - k, k + 2, k - 2].filter((v, i, a) => v >= 0 && a.indexOf(v) === i && v !== k)));
+    }],
+    [2, () => {
+      let x = [3, 4, 5, 6, 7], f = [], tot, jml, mean;
+      for (;;) {
+        f.length = 0; for (let i = 0; i < 5; i++) f.push(rnd(1, 6));
+        jml = f.reduce((a, b) => a + b, 0); tot = x.reduce((a, v, i) => a + v * f[i], 0);
+        if (tot % jml === 0) break;
+      }
+      mean = tot / jml;
+      const tabel = `<table style="border-collapse:collapse;margin:6px 0">` +
+        `<tr>${x.map((v) => `<th style="border:1px solid currentColor;padding:2px 10px">${v}</th>`).join("")}</tr>` +
+        `<tr>${f.map((v) => `<td style="border:1px solid currentColor;padding:2px 10px">${v}</td>`).join("")}</tr></table>`;
+      return soal(`Tabel frekuensi nilai ulangan:${tabel}Rata-rata nilai ulangan adalah...`,
+        `Jumlah seluruh nilai = ${x.map((v, i) => v + "×" + f[i]).join(" + ")} = ${tot}. Jumlah siswa = ${jml}. Rata-rata = ${tot}/${jml} = ${des(mean)}.`,
+        opsi(mean, [mean + 1, mean - 1, mean + 0.5, mean - 0.5, x[2]], des));
+    }],
+    [3, () => {
+      const a = rnd(1, 4), r = pick([2, 3]), n = pick([4, 5, 6]), s = a * (Math.pow(r, n) - 1) / (r - 1);
+      return soal(`Deret geometri dengan suku pertama ${a} dan rasio ${r}. Jumlah ${n} suku pertama adalah...`,
+        `S${n} = a(r^${n} − 1)/(r − 1) = ${a} × (${Math.pow(r, n)} − 1)/${r - 1} = ${a} × ${Math.pow(r, n) - 1} = ${s}.`,
+        opsi(s, [a * Math.pow(r, n - 1), s + a, s - a, a * Math.pow(r, n), s + r].filter((v, i, arr) => v > 0 && arr.indexOf(v) === i && v !== s)));
+    }],
+    [3, () => {
+      const kasus = [
+        { b: "lebih dari 4", B: [5, 6], A: "genap", ok: (v) => v % 2 === 0 },
+        { b: "lebih dari 3", B: [4, 5, 6], A: "ganjil", ok: (v) => v % 2 === 1 },
+        { b: "kurang dari 5", B: [1, 2, 3, 4], A: "genap", ok: (v) => v % 2 === 0 },
+        { b: "kurang dari 6", B: [1, 2, 3, 4, 5], A: "prima", ok: (v) => prima(v) }
+      ], k = pick(kasus), t = k.B.filter(k.ok), p = frac(t.length, k.B.length);
+      return soal(`Sebuah dadu dilempar satu kali. Jika diketahui mata dadu yang muncul ${k.b}, peluang muncul mata ${k.A} adalah...`,
+        `Himpunan hasil yang ${k.b}: {${k.B.join(", ")}} (ada ${k.B.length}). Di antaranya yang ${k.A}: {${t.join(", ")}} (ada ${t.length}). Peluang bersyarat = ${t.length}/${k.B.length} = ${p}.`,
+        opsi(p, [frac(t.length, 6), frac(k.B.length - t.length, k.B.length), frac(t.length, k.B.length + 1), frac(1, k.B.length), frac(t.length + 1, k.B.length), "1/3", "2/3", "1/4", "3/4", "1/6"].filter((v) => v !== p)));
+    }],
+    [3, () => {
+      const s = rnd(2, 9);
+      return soal(`Kubus dengan panjang rusuk ${s} cm. Panjang diagonal ruangnya (cm)...`,
+        `Diagonal ruang kubus = rusuk × √3 = ${s}√3 cm. (Diagonal sisinya hanya ${s}√2 cm.)`,
+        opsi(`${s}√3`, [`${s}√2`, `${3 * s}`, `${s * s}√2`, `${2 * s}√3`]));
+    }],
+    [3, () => {
+      let data, mean, sr;
+      for (;;) {
+        data = mix([2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 5).sort((a, b) => a - b);
+        const jml = data.reduce((a, v) => a + v, 0);
+        if (jml % 5 !== 0) continue;
+        mean = jml / 5;
+        const kali5 = data.reduce((a, v) => a + Math.abs(v - mean), 0);
+        if (kali5 % 5 !== 0) continue;
+        sr = kali5 / 5;
+        break;
+      }
+      return soal(`Simpangan rata-rata dari data: ${data.join(", ")} adalah...`,
+        `Rata-rata = ${data.join(" + ")} = ${data.reduce((a, v) => a + v, 0)}/5 = ${mean}. Jarak tiap data ke rata-rata: ${data.map((v) => Math.abs(v - mean)).join(", ")} (jumlah ${data.reduce((a, v) => a + Math.abs(v - mean), 0)}). Simpangan rata-rata = ${data.reduce((a, v) => a + Math.abs(v - mean), 0)}/5 = ${des(sr)}.`,
+        opsi(sr, [sr + 0.5, sr - 0.5, sr + 1, sr - 1, mean - sr], des));
+    }]
+  );
+
+  // ================= PERLUASAN: NUMERIK & DERET HURUF =================
+  G.Numerik.push(
+    [1, () => {
+      const st = pick([2, 3, 4]), aw = rnd(0, 25 - 5 * st);
+      const t = [0, 1, 2, 3].map((i) => String.fromCharCode(65 + aw + i * st)), r = String.fromCharCode(65 + aw + 4 * st);
+      const hur = (k) => String.fromCharCode(65 + Math.max(0, Math.min(25, k)));
+      return soal(`Deret huruf: ${t.join(", ")}, ...`, `Tiap huruf maju ${st} langkah dalam alfabet. Berikutnya ${r}.`,
+        opsi(r, [hur(aw + 5 * st), hur(aw + 3 * st), hur(aw + 4 * st + 1), hur(aw + 4 * st - 1), hur(aw + 2 * st)]));
+    }],
+    [2, () => {
+      const st0 = rnd(1, 3), aw = rnd(0, 15 - 5 * st0), t = [aw];
+      for (let i = 1; i < 5; i++) t.push(t[i - 1] + st0 + i - 1);
+      const next = t[4] + st0 + 4, hur = (k) => String.fromCharCode(65 + Math.max(0, Math.min(25, k)));
+      const sel = t.slice(1).map((v, i) => v - t[i]);
+      return soal(`Deret huruf: ${t.map((v) => hur(v)).join(", ")}, ...`,
+        `Langkahnya makin panjang satu huruf tiap suku: maju ${sel.join(", ")}. Berikutnya maju ${st0 + 4}: ${hur(t[4])} → ${hur(next)}.`,
+        opsi(hur(next), [hur(t[4] + st0 + 3), hur(t[4] + st0 + 5), hur(t[4] + st0 + 2), hur(t[4] + st0), hur(t[4])]));
+    }],
+    [2, () => {
+      let a, b, c, d, x, y;
+      for (;;) {
+        a = rnd(11, 29); b = rnd(11, 29); c = rnd(11, 29); d = rnd(11, 29);
+        x = a * b; y = c * d;
+        if (x !== y) break;
+      }
+      const rel = x > y ? "x > y" : "x < y";
+      return soal(`Jika x = ${a} × ${b} dan y = ${c} × ${d}, maka hubungan yang benar adalah...`,
+        `Hitung dulu: x = ${a} × ${b} = ${x}; y = ${c} × ${d} = ${y}. Jadi ${rel}.`,
+        opsi(rel, ["x > y", "x < y", "x = y", "x = 2y", "y = 2x"].filter((v) => v !== rel)));
+    }],
+    [3, () => {
+      const N = pick([60, 120, 180]), p = pick([20, 25, 30, 40, 50, 60]), f = pick([[1, 3], [1, 4], [2, 3], [3, 4]]);
+      const a = N * p / 100, sisa = N - a, b = sisa * f[0] / f[1];
+      if (!Number.isInteger(b) || sisa - b <= 0) return G.Numerik[0][1]();
+      return soal(`Dari ${N} siswa, ${p}% mengikuti klub olahraga dan ${f[0]}/${f[1]} dari siswa yang tidak ikut olahraga mengikuti klub seni. Banyak siswa yang tidak mengikuti keduanya adalah...`,
+        `Olahraga = ${p}% × ${N} = ${a}. Tidak ikut olahraga = ${N} − ${a} = ${sisa}. Seni = ${f[0]}/${f[1]} × ${sisa} = ${b}. Tidak keduanya = ${sisa} − ${b} = ${sisa - b}.`,
+        opsi(sisa - b, [b, a, sisa, sisa - b + 5, Math.abs(b - a)].filter((v, i, arr) => v > 0 && arr.indexOf(v) === i && v !== sisa - b)));
+    }]
+  );
+
+  // ================= PERLUASAN: LOGIKA =================
+  G.Logika.push(
+    [1, () => {
+      const [p, q, np, nq] = pick(KUAD), inv = `Jika ${np}, maka ${nq}`;
+      return soal(`Invers (kebalikan) dari pernyataan "Jika ${p}, maka ${q}" adalah...`,
+        `Invers dari p → q adalah ¬p → ¬q: ${inv}. Invers TIDAK ekuivalen dengan pernyataan asli (itu kekeliruan umum — yang ekuivalen adalah kontraposisi).`,
+        opsi(inv, [`Jika ${q}, maka ${p}`, `Jika ${nq}, maka ${np}`, `Jika ${p}, maka ${nq}`, `Jika ${q}, maka ${np}`]));
+    }],
+    [2, () => {
+      const [x, y, z] = mix(NOUN).slice(0, 3);
+      return soal(`Semua ${x} adalah ${y}. Sebagian ${y} adalah ${z}. Kesimpulan yang pasti benar adalah...`,
+        `"Sebagian ${y} adalah ${z}" belum tentu mencakup ${x}; ${x} bisa saja semuanya di bagian ${y} yang bukan ${z}. Tidak ada konklusi baru yang pasti. ${TDS}.`,
+        opsi(TDS, [`Semua ${x} adalah ${z}`, `Sebagian ${x} adalah ${z}`, `Semua ${z} adalah ${x}`, `Sebagian ${x} bukan ${z}`]));
+    }],
+    [3, () => {
+      const nm = mix(NAMA).slice(0, 3);
+      return soal(`Tepat satu dari tiga pernyataan berikut adalah <b>salah</b>:<br>1) ${nm[0]} yang memecahkan jendela.<br>2) ${nm[1]} tidak memecahkan jendela.<br>3) ${nm[1]} yang memecahkan jendela.<br>Siapa yang memecahkan jendela?`,
+        `Pernyataan 2 dan 3 saling bertentangan, jadi pasti tepat satu di antaranya yang salah. Karena hanya boleh ada satu pernyataan salah, pernyataan 1 pasti benar. Jadi pelakunya ${nm[0]}.`,
+        opsi(nm[0], nm.slice(1).concat(["Ketiganya bersama-sama", "Tidak dapat ditentukan"])));
+    }]
+  );
+
+  // ================= PERLUASAN: FIGURAL =================
+  const poli = (n) => {
+    const t = [];
+    for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n; t.push((30 + 20 * Math.cos(a)).toFixed(1) + "," + (30 + 20 * Math.sin(a)).toFixed(1)); }
+    return svg(`<polygon points="${t.join(" ")}"/>`);
+  };
+  G.Figural.push(
+    [1, () => {
+      const n0 = pick([3, 4]);
+      const figs = [0, 1, 2, 3].map((i) => poli(n0 + i)), benar = poli(n0 + 4);
+      return soal(`Perhatikan pola berikut. Gambar yang melanjutkan pola adalah...<div>${gabung(figs)}</div>`,
+        `Jumlah sisi bertambah satu tiap langkah: ${[0, 1, 2, 3].map((i) => n0 + i).join(", ")}. Berikutnya ${n0 + 4} sisi.`,
+        opsi(benar, [poli(n0 + 3), poli(n0 + 5), poli(n0 + 2), poli(n0 + 6)].filter((v, i, a) => a.indexOf(v) === i && v !== benar)));
+    }],
+    [2, () => {
+      const sudut = [[10, 10], [50, 10], [50, 50], [10, 50]], dir = pick([1, -1]), p0 = rnd(0, 3), st = pick([1, 2]);
+      const pos = (i) => ((p0 + i * st * dir) % 4 + 4) % 4;
+      const fig = (p) => svg('<rect x="10" y="10" width="40" height="40" fill="none"/>' + `<circle cx="${sudut[p][0]}" cy="${sudut[p][1]}" r="6" fill="currentColor" stroke="none"/>`);
+      const lain = [0, 1, 2, 3].filter((p) => p !== pos(4));
+      return soal(`Titik hitam bergerak mengelilingi sudut-sudut persegi. Gambar yang melanjutkan pola adalah...<div>${gabung([0, 1, 2, 3].map((i) => fig(pos(i))))}</div>`,
+        `Titik berpindah ${st} sudut ${dir > 0 ? "searah" : "berlawanan arah"} jarum jam tiap langkah. Pada langkah ke-5 titik kembali ke posisi yang ditunjukkan jawaban.`,
+        opsi(fig(pos(4)), lain.map(fig).concat(svg('<rect x="10" y="10" width="40" height="40" fill="none"/><circle cx="30" cy="30" r="6" fill="currentColor" stroke="none"/>'))));
+    }]
+  );
+
+  // ================= PERLUASAN: DATA VERBAL =================
+  SINONIM[1].push(...pasang("berguna=bermanfaat, gagah=perkasa, kacau=kusut, bungkam=senyap, lapang=luas, susah=sulit"));
+  SINONIM[2].push(...pasang("fondasi=dasar, norma=aturan, opini=pandangan, materi=bahan, propaganda=penyebaran paham, rezim=pemerintahan"));
+  SINONIM[3].push(...pasang("absurd=tak masuk akal, dogmatis=kaku memegang pendapat, empirik=berdasar pengalaman, komunal=bersama, nihil=tidak ada"));
+  ANTONIM[1].push(...pasang("naik=turun, buka=tutup, panas=dingin, tua=muda, jauh=dekat"));
+  ANTONIM[2].push(...pasang("sistematis=sembarangan, dominan=tertindas, prosedural=insidental, meleset=tepat, selaras=berlawanan"));
+  ANTONIM[3].push(...pasang("deduksi=induksi, koheren=tak runtut, objektif=subjektif, rutin=insidental, permanen=sementara"));
+  ANALOGI.push(
+    ["hewan : makanan", "makan", pasang("kambing=rumput, harimau=daging, lebah=nektar, panda=bambu, kucing=ikan, ulat=daun")],
+    ["alat : bahan bakar", "beroperasi dengan bahan bakar", pasang("mobil=bensin, pesawat=avtur, kapal=diesel, kompor=gas, roket=hidrogen, petromaks=minyak tanah")],
+    ["pekerjaan : tempat kerja", "bekerja di", pasang("guru=sekolah, dokter=rumah sakit, pilot=bandara, nelayan=laut, pelayan=restoran, petani=sawah")],
+    ["penyakit : organ", "menyerang", pasang("diabetes=pankreas, asma=paru-paru, glaukoma=mata, hepatitis=hati, karies=gigi, gastritis=lambung")]
+  );
+  KLAS.push(
+    K("hewan", "serangga", "semut, kupu-kupu, lebah, capung, kecoa, ngengat"),
+    K("hewan", "amfibi", "katak, kodok, salamander, sesilia"),
+    K("tumbuhan", "pohon berkayu", "jati, mahoni, trembesi, beringin, akasia"),
+    K("geografi", "danau", "Toba, Sentani, Poso, Kelimutu, Maninjau, Rawa Pening"),
+    K("profesi", "pekerja media", "wartawan, jurnalis, penyiar, editor, fotografer"),
+    K("alat", "alat laboratorium", "mikroskop, pipet, gelas ukur, bunsen, tabung reaksi"),
+    K("olahraga", "olahraga raket", "bulu tangkis, tenis, tenis meja, squash"),
+    K("seni", "cabang seni rupa", "lukisan, patung, seni grafis, instalasi, mural"),
+    K("kelaskata", "kata keterangan", "kemarin, segera, sangat, besok, hampir, selalu"),
+    K("ibukota", "ibu kota Asia Tenggara (non-ASEAN)", "Dili, Port Moresby, Dhaka, Kathmandu, Islamabad")
+  );
+
+  // ================= PERLUASAN SKD: NUMERIK (TIU Numerik) =================
+  // KPK/FPB, perbandingan, himpunan, kalender, median, aljabar, dan soal cerita khas SKD.
+  const kpk = (a, b) => a / gcd(a, b) * b;
+  const HARI = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
+  const jam = (m) => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, "0") + "." + String(m % 60).padStart(2, "0"); };
+  G.Numerik.push(
+    [2, () => {
+      let a, b;
+      do { a = rnd(4, 14); b = rnd(4, 18); } while (a === b || gcd(a, b) === 1 || a % b === 0 || b % a === 0);
+      const k = kpk(a, b);
+      return soal(`Lampu A menyala setiap ${a} detik dan lampu B setiap ${b} detik. Keduanya menyala bersamaan pada detik ke-0. Setelah berapa detik keduanya menyala bersamaan lagi untuk pertama kali?`,
+        `Waktu menyala bersamaan = KPK(${a}, ${b}) = ${k} detik.`,
+        opsi(k, [a * b, a + b, k * 2, k / 2 + a, Math.max(a, b) * 2, k + a]));
+    }],
+    [2, () => {
+      let g, m1, m2;
+      do { g = rnd(2, 12); m1 = rnd(2, 8); m2 = rnd(3, 11); } while (m1 >= m2 || gcd(m1, m2) !== 1);
+      const A = g * m1, B = g * m2;
+      return soal(`Tali sepanjang ${A} m dan ${B} m akan dipotong menjadi potongan-potongan sama panjang, sepanjang mungkin, tanpa sisa. Panjang tiap potongan (m) adalah...`,
+        `Panjang terbesar yang membagi habis kedua tali = FPB(${A}, ${B}) = ${g} m.`,
+        opsi(g, [g * 2, m1, m2, B - A, g + 1, g - 1]));
+    }],
+    [2, () => {
+      let x, y, d;
+      do { x = pick([4, 6, 8, 10, 12, 15]); y = pick([2, 4, 5, 6, 10]); d = rnd(6, 30); } while ((x * d) % (x + y) !== 0 || x * d / (x + y) === d);
+      const r = x * d / (x + y);
+      return soal(`${x} pekerja dapat menyelesaikan suatu proyek dalam ${d} hari. Jika ditambah ${y} pekerja lagi (kemampuan sama), proyek selesai dalam berapa hari?`,
+        `Makin banyak pekerja, makin sedikit hari (berbalik nilai): ${x} × ${d} = ${x + y} × h, sehingga h = ${x * d}/${x + y} = ${r} hari.`,
+        opsi(r, [d - y, d + y, Math.round(d / 2), d - 1, r + 2, r - 1]));
+    }],
+    [1, () => {
+      const k = rnd(2, 8) * 10, b = rnd(2, 6), m = k * rnd(2, 5), r = b * m / k;
+      return soal(`Sebuah motor menghabiskan ${b} liter bensin untuk menempuh ${k} km. Bensin yang dibutuhkan untuk menempuh ${m} km adalah... liter.`,
+        `Senilai: ${b}/${k} = x/${m}, x = ${b} × ${m} / ${k} = ${r} liter.`,
+        opsi(r, [r + b, r - 1, r * 2, m / 10, b * 2 + r]));
+    }],
+    [1, () => {
+      const v = Array.from({ length: 7 }, () => rnd(1, 30)), s = v.slice().sort((p, q) => p - q), med = s[3];
+      const mean = Math.round(v.reduce((p, q) => p + q, 0) / 7);
+      return soal(`Median dari data: ${v.join(", ")} adalah...`,
+        `Urutkan: ${s.join(", ")}. Karena ada 7 data, median adalah data ke-4 = ${med}.`,
+        opsi(med, [s[2], s[4], mean, s[0] + s[6] - med, v[3]]));
+    }],
+    [2, () => {
+      let N, a, b, c;
+      do { N = rnd(30, 60); a = rnd(15, 35); b = rnd(12, 30); c = rnd(3, 12); } while (c >= Math.min(a, b) || N - (a + b - c) < 1);
+      const r = N - (a + b - c);
+      return soal(`Dari ${N} siswa, ${a} siswa gemar sepak bola, ${b} siswa gemar basket, dan ${c} siswa gemar keduanya. Banyak siswa yang tidak gemar keduanya adalah...`,
+        `Yang gemar paling sedikit satu = ${a} + ${b} − ${c} = ${a + b - c}. Tidak gemar keduanya = ${N} − ${a + b - c} = ${r}.`,
+        opsi(r, [a + b - c, N - a - b, N - c, r + c, Math.abs(N - a - b + 2 * c)]));
+    }],
+    [1, () => {
+      const i = rnd(0, 6), n = rnd(10, 200), r = HARI[(i + n) % 7];
+      return soal(`Hari ini hari ${HARI[i]}. ${n} hari lagi adalah hari...`,
+        `${n} = ${Math.floor(n / 7)} × 7 + ${n % 7}. Sisa ${n % 7} hari dari ${HARI[i]} jatuh pada hari ${r}.`,
+        opsi(r, HARI.filter((h) => h !== r)));
+    }],
+    [3, () => {
+      const H = rnd(1, 10) * 100000, p = pick([10, 20, 25, 30, 40, 50]), q = pick([10, 20, 25, 30, 40, 50]), f = H * (100 + p) / 100 * (100 - q) / 100;
+      return soal(`Harga sebuah barang ${rp(H)} naik ${p}%, kemudian turun ${q}% dari harga setelah naik. Harga akhir barang adalah...`,
+        `Setelah naik: ${rp(H)} × ${100 + p}% = ${rp(H * (100 + p) / 100)}. Setelah turun: × ${100 - q}% = ${rp(f)}. (Kenaikan dan penurunan dihitung dari harga yang berbeda, jadi tidak bisa langsung dikurangkan.)`,
+        opsi(f, [H, H * (100 + p - q) / 100, H * (100 - q) / 100, H * (100 + p) / 100, H * (100 - p + q) / 100], rp));
+    }],
+    [2, () => {
+      const l = rnd(3, 15), k = pick([2, 3]), p = k * l, K = 2 * (p + l);
+      return soal(`Panjang sebuah persegi panjang adalah ${k} kali lebarnya dan kelilingnya ${K} cm. Luas persegi panjang tersebut (cm²) adalah...`,
+        `Keliling = 2(${k}l + l) = ${2 * (k + 1)}l = ${K}, jadi l = ${l} cm dan p = ${p} cm. Luas = ${p} × ${l} = ${p * l} cm².`,
+        opsi(p * l, [K, p + l, p * p, l * l, (p + l) * 2 * l]));
+    }],
+    [2, () => {
+      let n1, n2, r1, r2;
+      do { n1 = rnd(10, 30); n2 = rnd(10, 30); r1 = rnd(60, 90); r2 = rnd(60, 90); } while ((n1 * r1 + n2 * r2) % (n1 + n2) !== 0 || r1 === r2 || n1 === n2);
+      const r = (n1 * r1 + n2 * r2) / (n1 + n2);
+      return soal(`Rata-rata nilai ${n1} siswa kelas A adalah ${r1}, sedangkan rata-rata nilai ${n2} siswa kelas B adalah ${r2}. Rata-rata nilai seluruh siswa kedua kelas adalah...`,
+        `Jumlah nilai = ${n1} × ${r1} + ${n2} × ${r2} = ${n1 * r1 + n2 * r2}. Banyak siswa = ${n1 + n2}. Rata-rata = ${n1 * r1 + n2 * r2}/${n1 + n2} = ${r}.`,
+        opsi(r, [(r1 + r2) / 2, r + 1, r - 1, Math.max(r1, r2), Math.min(r1, r2)], des));
+    }],
+    [1, () => {
+      const pen = [2, 3, 4, 5, 6, 8, 10, 12];
+      let b, d, a, c;
+      do { b = pick(pen); d = pick(pen); a = rnd(1, b - 1); c = rnd(1, d - 1); } while (b === d || gcd(b, d) === Math.min(b, d));
+      const n = a * d + c * b, dd = b * d;
+      return soal(`Hasil dari ${a}/${b} + ${c}/${d} adalah...`,
+        `Samakan penyebut: ${a}/${b} + ${c}/${d} = ${a * d}/${dd} + ${c * b}/${dd} = ${n}/${dd} = ${frac(n, dd)}.`,
+        opsi(frac(n, dd), [frac(a + c, b + d), frac(a * c, b * d), frac(n + 1, dd), frac(n, b + d), frac(Math.abs(a * d - c * b) || 1, dd), frac(n + dd, dd)]));
+    }],
+    [2, () => {
+      const x = rnd(2, 12), a = rnd(2, 6), b = rnd(1, 15), c = a * x + b, d = rnd(2, 5), e = rnd(1, 9), r = d * x - e;
+      return soal(`Jika ${a}x + ${b} = ${c}, maka nilai ${d}x − ${e} adalah...`,
+        `${a}x = ${c} − ${b} = ${c - b}, x = ${x}. Maka ${d}x − ${e} = ${d * x} − ${e} = ${r}.`,
+        opsi(r, [r + e, r - d, d * c - e, x, r + d, r * 2]));
+    }],
+    [1, () => {
+      const jm = rnd(5, 20), mn = pick([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]), h = rnd(1, 4), m = pick([10, 15, 20, 25, 30, 35, 40, 45, 50]);
+      const mulai = jm * 60 + mn, r = mulai + h * 60 + m;
+      return soal(`Kereta berangkat pukul ${jam(mulai)} dan menempuh perjalanan selama ${h} jam ${m} menit. Kereta tiba pukul...`,
+        `${jam(mulai)} + ${h} jam = ${jam(mulai + h * 60)}; ditambah ${m} menit = ${jam(r)}.`,
+        opsi(jam(r), [jam(r + 10), jam(r - 10), jam(r + 60), jam(r - 60), jam(r + 20), jam(r - 20)]));
+    }],
+    [3, () => {
+      const a = rnd(2, 9), b = pick([2, 3, 4, 5, 6]), n = pick([8, 10, 12, 15, 20]), S = n * (2 * a + (n - 1) * b) / 2;
+      return soal(`Jumlah ${n} suku pertama dari deret ${a} + ${a + b} + ${a + 2 * b} + ... adalah...`,
+        `Deret aritmetika dengan a = ${a}, b = ${b}, n = ${n}. S = n/2 × (2a + (n−1)b) = ${n}/2 × (${2 * a} + ${(n - 1) * b}) = ${S}.`,
+        opsi(S, [S + n, S - n, n * (a + (n - 1) * b), S + b * n, a + (n - 1) * b + S / n]));
+    }]
+  );
+
+  // ================= FONDASI (Belajar dari Nol): tiap soal membawa `langkah` pengerjaan =================
+  // `bahas` = langkah digabung, jadi semua kode lama (tinjauan, ulangan, check.js) tetap jalan. Langkah terakhir memuat kunci.
+  const lk = (q, langkah, o) => Object.assign({ q: q, langkah: langkah, bahas: langkah.join(" ") }, o);
+  const camp = (w, n, d) => `${w} ${n}/${d}`; // pecahan campuran
+  const rasio = (a, b) => `${a} : ${b}`;
+  const bulatRatus = (n) => Math.round(n / 100) * 100;
+
+  G["Dasar Operasi Hitung"] = [
+    [1, () => {
+      const a = rnd(120, 899), b = rnd(110, 899), r = a + b, ra = Math.floor(a / 100) * 100, rb = Math.floor(b / 100) * 100;
+      return lk(`Hasil dari ${a} + ${b} adalah...`, [
+        `Jumlahkan ratusannya: ${ra} + ${rb} = ${ra + rb}.`,
+        `Jumlahkan sisanya: ${a - ra} + ${b - rb} = ${a - ra + b - rb}.`,
+        `Gabungkan keduanya: ${ra + rb} + ${a - ra + b - rb} = ${r}.`],
+      opsi(r, [r + 10, r - 10, r + 100, r - 100, r + 1, r - 1]));
+    }],
+    [1, () => {
+      const a = rnd(400, 999), b = rnd(110, a - 120), r = a - b, rb = Math.floor(b / 100) * 100;
+      return lk(`Hasil dari ${a} − ${b} adalah...`, [
+        `Kurangi ratusan dari ${b} dulu: ${a} − ${rb} = ${a - rb}.`,
+        `Kurangi sisanya (${b - rb}): ${a - rb} − ${b - rb} = ${r}.`],
+      opsi(r, [r + 10, r - 10, r + 100, r - 100, r + 1, r - 1]));
+    }],
+    [1, () => {
+      const a = rnd(12, 99), b = rnd(3, 9), t = Math.floor(a / 10) * 10, u = a - t, r = a * b;
+      return lk(`Hasil dari ${a} × ${b} adalah...`, [
+        `Pecah ${a} menjadi ${t} + ${u}.`,
+        `Kalikan masing-masing: ${t} × ${b} = ${t * b} dan ${u} × ${b} = ${u * b}.`,
+        `Jumlahkan: ${t * b} + ${u * b} = ${r}.`],
+      opsi(r, [r + b, r - b, r + 10, r - 10, t * b + u, a + b]));
+    }],
+    [1, () => {
+      const b = rnd(3, 9), q = rnd(12, 99), a = b * q;
+      return lk(`Hasil dari ${a} ÷ ${b} adalah...`, [
+        `Pembagian adalah kebalikan perkalian: cari bilangan yang jika dikali ${b} hasilnya ${a}.`,
+        `Coba ${q}: ${b} × ${q} = ${a}.`,
+        `Jadi ${a} ÷ ${b} = ${q}.`],
+      opsi(q, [q + 1, q - 1, q + 10, q - 10, q * 2, Math.round(q / 2)]));
+    }],
+    [1, () => {
+      const n = rnd(1235, 98765), d = pick(["puluhan", "ratusan", "ribuan"]), k = d === "puluhan" ? 10 : d === "ratusan" ? 100 : 1000, r = Math.round(n / k) * k;
+      return lk(`Bilangan ${ribu(n)} dibulatkan ke ${d} terdekat menjadi...`, [
+        `Lihat angka tepat di sebelah kanan tempat ${d}: jika 5 atau lebih, bulatkan ke atas; jika kurang dari 5, bulatkan ke bawah.`,
+        `${ribu(n)} berada di antara ${ribu(Math.floor(n / k) * k)} dan ${ribu(Math.floor(n / k) * k + k)}.`,
+        `Yang terdekat adalah ${ribu(r)}.`],
+      opsi(ribu(r), [r + k, r - k, r + 2 * k, r - 2 * k, r + 3 * k, r + 4 * k].filter((v) => v > 0).map(ribu)));
+    }],
+    [2, () => {
+      const a = rnd(10, 50), b = rnd(2, 9), c = rnd(2, 9), d = rnd(1, 30), r = a + b * c - d;
+      return lk(`Hasil dari ${a} + ${b} × ${c} − ${d} adalah...`, [
+        `Urutan operasi: kali dan bagi dikerjakan lebih dulu daripada tambah dan kurang.`,
+        `Kerjakan perkalian: ${b} × ${c} = ${b * c}.`,
+        `Sekarang ${a} + ${b * c} − ${d}: ${a} + ${b * c} = ${a + b * c}, lalu ${a + b * c} − ${d} = ${r}.`],
+      opsi(r, [(a + b) * c - d, a + b * (c - d), a + b * c + d, a - b * c + d, r + 10]));
+    }],
+    [2, () => {
+      const a = rnd(2, 12), b = rnd(2, 9), c = rnd(2, 9), r = (a + b) * c;
+      return lk(`Hasil dari (${a} + ${b}) × ${c} adalah...`, [
+        `Tanda kurung dikerjakan lebih dulu: ${a} + ${b} = ${a + b}.`,
+        `Lalu kalikan: ${a + b} × ${c} = ${r}.`],
+      opsi(r, [a + b * c, r + c, r - c, a * c + b, r + 10]));
+    }],
+    [2, () => {
+      const a = rnd(5, 25), b = rnd(a + 1, a + 40), r = a - b;
+      return lk(`Hasil dari ${a} − ${b} adalah...`, [
+        `${b} lebih besar daripada ${a}, jadi hasilnya negatif.`,
+        `Hitung selisihnya tanpa tanda: ${b} − ${a} = ${b - a}.`,
+        `Beri tanda negatif: ${a} − ${b} = ${r}.`],
+      opsi(r, [b - a, r - 1, r + 1, a + b, -(a + b)]));
+    }],
+    [2, () => {
+      const n = rnd(3, 19), r = n * n;
+      if (Math.random() < 0.5) return lk(`Hasil dari ${n}² adalah...`, [`${n}² artinya ${n} × ${n}.`, `${n} × ${n} = ${r}.`], opsi(r, [n * 2, r + n, r - n, n * 3, r + 10]));
+      return lk(`Nilai √${r} adalah...`, [`Cari bilangan yang jika dikuadratkan hasilnya ${r}.`, `${n} × ${n} = ${r}, jadi √${r} = ${n}.`], opsi(n, [n + 1, n - 1, n * 2, Math.round(r / 2), n + 2]));
+    }],
+    [2, () => {
+      const b = rnd(4, 9), q = rnd(5, 30), s = rnd(1, b - 1), a = b * q + s;
+      return lk(`Sisa pembagian ${a} oleh ${b} adalah...`, [
+        `Cari kelipatan ${b} terbesar yang tidak melebihi ${a}: ${b} × ${q} = ${b * q}.`,
+        `Sisanya: ${a} − ${b * q} = ${s}.`],
+      opsi(s, [s + 1, s - 1 > 0 ? s - 1 : s + 2, b - s, q % b + b, 0]));
+    }],
+    [3, () => {
+      const a = rnd(12, 39), b = rnd(12, 39), t = Math.floor(b / 10) * 10, u = b - t, r = a * b;
+      return lk(`Hasil dari ${a} × ${b} adalah...`, [
+        `Pecah ${b} menjadi ${t} + ${u}.`,
+        `${a} × ${t} = ${a * t}.`,
+        `${a} × ${u} = ${a * u}.`,
+        `Jumlahkan: ${a * t} + ${a * u} = ${r}.`],
+      opsi(r, [r + a, r - a, r + 10, r - 10, a * t + u, r + b]));
+    }]
+  ];
+
+  G["Dasar Pecahan"] = [
+    [1, () => {
+      const g = rnd(2, 9), x = rnd(1, 8), y = rnd(x + 1, 9);
+      if (gcd(x, y) !== 1) return G["Dasar Pecahan"][0][1]();
+      const r = frac(x, y);
+      return lk(`Bentuk paling sederhana dari ${g * x}/${g * y} adalah...`, [
+        `Cari bilangan terbesar yang membagi habis ${g * x} dan ${g * y}: ${g}.`,
+        `Bagi pembilang dan penyebut dengan ${g}: ${g * x} ÷ ${g} = ${x} dan ${g * y} ÷ ${g} = ${y}.`,
+        `Bentuk sederhananya ${r}.`],
+      opsi(r, [frac(x + 1, y), frac(x, y + 1), frac(g * x, y), frac(x * 2, y * 2 + 1), frac(y, x), frac(x + g, y + g)]));
+    }],
+    [1, () => {
+      const d = rnd(5, 15), a = rnd(1, d - 3), b = rnd(1, d - a - 1 || 1), r = frac(a + b, d);
+      return lk(`Hasil dari ${a}/${d} + ${b}/${d} adalah...`, [
+        `Penyebutnya sama (${d}), jadi pembilang langsung dijumlahkan.`,
+        `${a} + ${b} = ${a + b}, sehingga hasilnya ${a + b}/${d}.`,
+        `Sederhanakan bila bisa: ${r}.`],
+      opsi(r, [frac(a + b, d * 2), frac(a * b, d), frac(a + b + 1, d), frac(a + b, d + 1), frac(Math.abs(a - b) || 1, d), frac(a + b - 1, d), frac(a + b + 2, d), frac(a + b, d + 2), frac(a + b + 3, d), frac(a + b, d * 2 + 1)]));
+    }],
+    [1, () => {
+      const d = rnd(3, 9), w = rnd(1, 6), n = rnd(1, d - 1), p = w * d + n;
+      return lk(`Pecahan campuran ${camp(w, n, d)} jika diubah menjadi pecahan biasa adalah...`, [
+        `Kalikan bilangan bulat dengan penyebut: ${w} × ${d} = ${w * d}.`,
+        `Tambahkan pembilang: ${w * d} + ${n} = ${p}.`,
+        `Hasilnya ${p}/${d}.`],
+      opsi(`${p}/${d}`, [`${w * n + d}/${d}`, `${p + 1}/${d}`, `${p - 1}/${d}`, `${p}/${d + 1}`, `${w + n}/${d}`, `${p + d}/${d}`]));
+    }],
+    [1, () => {
+      const d = pick([4, 5, 6, 8, 10]), n = rnd(1, d - 1), N = d * rnd(3, 15), r = n * N / d;
+      return lk(`${n}/${d} dari ${N} adalah...`, [
+        `Bagi ${N} menjadi ${d} bagian sama besar: ${N} ÷ ${d} = ${N / d}.`,
+        `Ambil ${n} bagian: ${n} × ${N / d} = ${r}.`],
+      opsi(r, [N / d, r + N / d, r - N / d, N - r, r + 1, r * 2]));
+    }],
+    [2, () => {
+      const pen = [2, 3, 4, 5, 6, 8, 10, 12];
+      let b, d, a, c;
+      do { b = pick(pen); d = pick(pen); a = rnd(1, b - 1); c = rnd(1, d - 1); } while (b === d || gcd(b, d) === Math.min(b, d));
+      const m = kpk(b, d), n = a * (m / b) + c * (m / d), r = frac(n, m);
+      return lk(`Hasil dari ${a}/${b} + ${c}/${d} adalah...`, [
+        `Penyebut berbeda, samakan dulu dengan KPK(${b}, ${d}) = ${m}.`,
+        `${a}/${b} = ${a * (m / b)}/${m} dan ${c}/${d} = ${c * (m / d)}/${m}.`,
+        `Jumlahkan pembilang: ${a * (m / b)} + ${c * (m / d)} = ${n}, jadi ${n}/${m}.`,
+        `Bentuk sederhana: ${r}.`],
+      opsi(r, [frac(a + c, b + d), frac(a * c, b * d), frac(n + 1, m), frac(n, b + d), frac(n + m, m), frac(Math.abs(a * (m / b) - c * (m / d)) || 1, m)]));
+    }],
+    [2, () => {
+      const pen = [3, 4, 5, 6, 8, 10, 12];
+      let b, d, a, c, m, n;
+      do { b = pick(pen); d = pick(pen); a = rnd(1, b - 1); c = rnd(1, d - 1); m = kpk(b, d); n = a * (m / b) - c * (m / d); } while (b === d || n <= 0);
+      const r = frac(n, m);
+      return lk(`Hasil dari ${a}/${b} − ${c}/${d} adalah...`, [
+        `Samakan penyebut dengan KPK(${b}, ${d}) = ${m}.`,
+        `${a}/${b} = ${a * (m / b)}/${m} dan ${c}/${d} = ${c * (m / d)}/${m}.`,
+        `Kurangi pembilang: ${a * (m / b)} − ${c * (m / d)} = ${n}, jadi ${n}/${m}.`,
+        `Bentuk sederhana: ${r}.`],
+      opsi(r, [frac(Math.abs(a - c) || 1, Math.abs(b - d) || 1), frac(n + 1, m), frac(n, m + 1), frac(a * (m / b) + c * (m / d), m), frac(n * 2, m), frac(m - n, m), frac(n + 2, m), frac(n, m + 2), frac(n + 3, m), frac(n * 3, m)]));
+    }],
+    [2, () => {
+      let a, b, c, d;
+      do { b = rnd(2, 9); d = rnd(2, 9); a = rnd(1, b - 1); c = rnd(1, d - 1); } while (b === d);
+      const r = frac(a * c, b * d);
+      return lk(`Hasil dari ${a}/${b} × ${c}/${d} adalah...`, [
+        `Perkalian pecahan: pembilang × pembilang dan penyebut × penyebut.`,
+        `${a} × ${c} = ${a * c} dan ${b} × ${d} = ${b * d}, jadi ${a * c}/${b * d}.`,
+        `Bentuk sederhana: ${r}.`],
+      opsi(r, [frac(a * d, b * c), frac(a + c, b + d), frac(a * c, b + d), frac(a * c + 1, b * d), frac(b * d, a * c), frac(a * c, b * d + 1)]));
+    }],
+    [3, () => {
+      let a, b, c, d;
+      do { b = rnd(2, 9); d = rnd(2, 9); a = rnd(1, b - 1); c = rnd(1, d - 1); } while (b === d || a * d === b * c);
+      const r = frac(a * d, b * c);
+      return lk(`Hasil dari ${a}/${b} ÷ ${c}/${d} adalah...`, [
+        `Membagi pecahan sama dengan mengalikan dengan kebalikan pembagi.`,
+        `Kebalikan ${c}/${d} adalah ${d}/${c}, jadi ${a}/${b} × ${d}/${c}.`,
+        `${a} × ${d} = ${a * d} dan ${b} × ${c} = ${b * c}, jadi ${a * d}/${b * c}.`,
+        `Bentuk sederhana: ${r}.`],
+      opsi(r, [frac(a * c, b * d), frac(b * c, a * d), frac(a + d, b + c), frac(a * d + 1, b * c), frac(a * d, b * c + 1), frac(a * c, b * c)]));
+    }],
+    [3, () => {
+      const pen = [3, 4, 5, 6, 7, 8, 9];
+      const pecs = [];
+      while (pecs.length < 3) {
+        const d = pick(pen), n = rnd(1, d - 1), k = n / d;
+        if (!pecs.some((p) => Math.abs(p[0] / p[1] - k) < 1e-9)) pecs.push([n, d]);
+      }
+      const m = pecs.reduce((x, p) => kpk(x, p[1]), 1), nilai = pecs.map((p) => p[0] * (m / p[1]));
+      const maks = nilai.indexOf(Math.max(...nilai)), s = (p) => `${p[0]}/${p[1]}`, benar = s(pecs[maks]);
+      const lain = [`${pecs[maks][0] + 1}/${pecs[maks][1] + 1}`, `${pecs[maks][1]}/${pecs[maks][0] + pecs[maks][1]}`, `${pecs[maks][0]}/${pecs[maks][1] + 2}`, `${pecs[maks][0] + 2}/${pecs[maks][1] + 3}`, `${pecs[maks][0] + 1}/${pecs[maks][1] + 2}`].concat(pecs.filter((_, i) => i !== maks).map(s));
+      return lk(`Pecahan yang paling besar di antara ${pecs.map(s).join(", ")} adalah...`, [
+        `Samakan penyebut dengan KPK(${pecs.map((p) => p[1]).join(", ")}) = ${m}.`,
+        `Ubah: ${pecs.map((p, i) => `${s(p)} = ${nilai[i]}/${m}`).join("; ")}.`,
+        `Pembilang terbesar adalah ${Math.max(...nilai)}, yaitu ${benar}.`],
+      opsi(benar, lain.filter((v, i, a) => a.indexOf(v) === i && v !== benar)));
+    }]
+  ];
+
+  G["Dasar Desimal dan Persen"] = [
+    [1, () => {
+      const d = pick([2, 4, 5, 8, 10, 20, 25]), n = rnd(1, d - 1), v = n / d, r = des(v);
+      return lk(`Pecahan ${n}/${d} jika ditulis sebagai desimal adalah...`, [
+        `Pecahan berarti pembagian: ${n} ÷ ${d}.`,
+        `${n} ÷ ${d} = ${r}.`],
+      opsi(r, [Math.round((v + 0.1) * 100) / 100, Math.round((v + 0.05) * 100) / 100, n / (d + 1), v / 10, v * 10, d / n, v + 0.5].filter((x) => x > 0 && x !== v).map(des)));
+    }],
+    [1, () => {
+      const p = rnd(2, 98), r = p + "%";
+      return lk(`Desimal ${des(p / 100)} jika ditulis sebagai persen adalah...`, [
+        `Persen berarti per seratus: kalikan desimal dengan 100.`,
+        `${des(p / 100)} × 100 = ${p}, jadi ${r}.`],
+      opsi(r, [(p * 10) + "%", Math.max(1, Math.round(p / 10)) + "%", (p + 5) + "%", (p - 1 > 0 ? p - 1 : p + 7) + "%", (p + 10) + "%", des(p / 100) + "%"].filter((x, i, a) => a.indexOf(x) === i && x !== r)));
+    }],
+    [1, () => {
+      const p = pick([10, 20, 25, 30, 40, 50, 60, 75]), N = rnd(2, 40) * 20, a = p * N / 100;
+      return lk(`${p}% dari ${N} adalah...`, [
+        `${p}% berarti ${p}/100.`,
+        `${p}/100 × ${N} = ${p * N}/100.`,
+        `${p * N} ÷ 100 = ${a}.`],
+      opsi(a, [a * 2, a + 10, a - 10, N - a, a + p]));
+    }],
+    [1, () => {
+      const x = rnd(11, 99), y = rnd(11, 99), r = des((x + y) / 10);
+      return lk(`Hasil dari ${des(x / 10)} + ${des(y / 10)} adalah...`, [
+        `Sejajarkan tanda koma, lalu jumlahkan seperti bilangan biasa.`,
+        `${x} + ${y} = ${x + y} (dalam persepuluhan).`,
+        `Beri koma kembali: ${r}.`],
+      opsi(r, [des((x + y) / 100), des((x + y + 1) / 10), des((x + y - 1) / 10), des((x + y) / 10 + 1), des((x + y) * 10)].filter((v, i, a) => a.indexOf(v) === i && v !== r)));
+    }],
+    [2, () => {
+      const p = pick([25, 40, 45, 55, 60, 65, 70, 85]), r = frac(p, 100);
+      return lk(`${p}% jika ditulis sebagai pecahan paling sederhana adalah...`, [
+        `${p}% berarti ${p}/100.`,
+        `Cari bilangan terbesar yang membagi ${p} dan 100: ${gcd(p, 100)}.`,
+        `${p} ÷ ${gcd(p, 100)} = ${p / gcd(p, 100)} dan 100 ÷ ${gcd(p, 100)} = ${100 / gcd(p, 100)}, jadi ${r}.`],
+      opsi(r, [frac(p, 10), frac(100 - p, 100), frac(p + 5, 100), frac(1, p), frac(p, 1000), frac(p * 2, 100 + p)].filter((v, i, a) => a.indexOf(v) === i && v !== r)));
+    }],
+    [2, () => {
+      const H = rnd(2, 40) * 5000, p = pick([10, 15, 20, 25, 30, 40, 50]), pot = H * p / 100, r = H - pot;
+      return lk(`Sebuah baju berharga ${rp(H)} didiskon ${p}%. Harga yang harus dibayar adalah...`, [
+        `Hitung potongan: ${p}% × ${rp(H)} = ${rp(pot)}.`,
+        `Harga bayar = harga awal − potongan = ${rp(H)} − ${rp(pot)} = ${rp(r)}.`],
+      opsi(r, [pot, H + pot, H - pot / 2, r + 5000, r - 5000], rp));
+    }],
+    [2, () => {
+      const G0 = rnd(20, 90) * 100000, p = pick([5, 10, 15, 20, 25]), nai = G0 * p / 100, r = G0 + nai;
+      return lk(`Gaji Pak Ali ${rp(G0)} naik ${p}%. Gaji barunya adalah...`, [
+        `Kenaikan = ${p}% × ${rp(G0)} = ${rp(nai)}.`,
+        `Gaji baru = ${rp(G0)} + ${rp(nai)} = ${rp(r)}.`],
+      opsi(r, [nai, G0 - nai, r + 100000, r - 100000, G0 + nai * 2], rp));
+    }],
+    [2, () => {
+      const b = pick([20, 25, 40, 50, 80, 200]), p = rnd(2, 19) * 5, aa = b * p / 100;
+      if (!Number.isInteger(aa)) return G["Dasar Desimal dan Persen"][7][1]();
+      return lk(`${aa} adalah berapa persen dari ${b}?`, [
+        `Persen = bagian ÷ keseluruhan × 100%.`,
+        `${aa} ÷ ${b} × 100% = ${p}%.`],
+      opsi(p, [p + 5, p - 5, p * 2, 100 - p, p + 10], persen));
+    }]
+  ];
+
+  G["Dasar Perbandingan"] = [
+    [1, () => {
+      const k = pick([100000, 200000, 250000, 500000]), d = rnd(2, 20) * 2, km = d * k / 100000;
+      return lk(`Pada peta berskala 1 : ${ribu(k)}, jarak dua kota di peta ${d} cm. Jarak sebenarnya (km) adalah...`, [
+        `Skala 1 : ${ribu(k)} berarti 1 cm di peta = ${ribu(k)} cm sebenarnya.`,
+        `${d} cm × ${ribu(k)} = ${ribu(d * k)} cm.`,
+        `Ubah ke km (1 km = 100.000 cm): ${ribu(d * k)} ÷ 100.000 = ${km} km.`],
+      opsi(km, [km * 10, km / 10 + 1, km * 2, km + 5, d]));
+    }],
+    [1, () => {
+      const n = rnd(3, 8), p = rnd(2, 9) * 1000, m = n * rnd(2, 4), r = p * m / n;
+      return lk(`${n} buku tulis harganya ${rp(n * p)}. Harga ${m} buku yang sama adalah...`, [
+        `Harga satu buku = ${rp(n * p)} ÷ ${n} = ${rp(p)}.`,
+        `Harga ${m} buku = ${m} × ${rp(p)} = ${rp(m * p)}.`],
+      opsi(m * p, [n * p, (m + n) * p, (m - 1) * p, m * p + 1000, (m + 1) * p], rp));
+    }],
+    [1, () => {
+      const g = rnd(2, 12), x = rnd(1, 6), y = rnd(x + 1, 9);
+      if (gcd(x, y) !== 1) return G["Dasar Perbandingan"][2][1]();
+      const r = rasio(x, y);
+      return lk(`Perbandingan ${g * x} : ${g * y} dalam bentuk paling sederhana adalah...`, [
+        `Bagi kedua bilangan dengan bilangan terbesar yang membagi habis keduanya, yaitu ${g}.`,
+        `${g * x} ÷ ${g} = ${x} dan ${g * y} ÷ ${g} = ${y}.`,
+        `Bentuk sederhananya ${r}.`],
+      opsi(r, [rasio(y, x), rasio(x + 1, y), rasio(x, y + 1), rasio(g * x, y), rasio(x + g, y + g), rasio(x * 2, y * 2 + 1)].filter((v, i, a) => a.indexOf(v) === i && v !== r)));
+    }],
+    [2, () => {
+      const a = rnd(1, 5), b = rnd(a + 1, 7), s = rnd(3, 12) * (a + b), r = s / (a + b) * b;
+      if (gcd(a, b) !== 1) return G["Dasar Perbandingan"][3][1]();
+      return lk(`Uang ${rp(s * 1000)} dibagi untuk Ani dan Budi dengan perbandingan ${a} : ${b}. Bagian Budi adalah...`, [
+        `Jumlah bagian = ${a} + ${b} = ${a + b}.`,
+        `Nilai satu bagian = ${rp(s * 1000)} ÷ ${a + b} = ${rp(s / (a + b) * 1000)}.`,
+        `Bagian Budi = ${b} × ${rp(s / (a + b) * 1000)} = ${rp(r * 1000)}.`],
+      opsi(r * 1000, [s / (a + b) * a * 1000, s * 500, r * 1000 + 1000, r * 1000 - 1000, s / (a + b) * 1000], rp));
+    }],
+    [2, () => {
+      let x, d, t;
+      do { x = pick([4, 5, 6, 8, 10, 12, 15]); d = rnd(6, 30); t = pick([2, 3, 4, 5, 6, 10]); } while ((x * d) % (x + t) !== 0 || x * d / (x + t) === d);
+      const r = x * d / (x + t);
+      return lk(`${x} pekerja menyelesaikan suatu pekerjaan dalam ${d} hari. Jika pekerjanya ${x + t} orang (kemampuan sama), pekerjaan selesai dalam... hari.`, [
+        `Makin banyak pekerja, makin sedikit hari (berbalik nilai), jadi jumlah pekerja × hari tetap.`,
+        `${x} × ${d} = ${x * d}.`,
+        `${x + t} × h = ${x * d}, sehingga h = ${x * d} ÷ ${x + t} = ${r}.`],
+      opsi(r, [d - t, d + t, Math.round(d / 2), d - 1, r + 2, r - 1]));
+    }],
+    [2, () => {
+      const org = rnd(2, 5) * 2, p = rnd(2, 6) * 2, m = org * rnd(2, 4) + (Math.random() < 0.5 ? 0 : org), r = p * m / org;
+      if (!Number.isInteger(r) || m === org) return G["Dasar Perbandingan"][5][1]();
+      return lk(`Resep kue untuk ${org} orang memerlukan ${p} butir telur. Untuk ${m} orang diperlukan... butir telur.`, [
+        `Telur untuk satu orang = ${p} ÷ ${org} = ${p / org}.`,
+        `Untuk ${m} orang: ${m} × ${p / org} = ${r}.`],
+      opsi(r, [r + 2, r - 2, p + (m - org), p * 2, r + p, r + 1]));
+    }],
+    [3, () => {
+      const a = rnd(1, 4), b = rnd(2, 6), c = rnd(3, 8), jml = a + b + c, T = jml * rnd(4, 15), r = T / jml * b;
+      return lk(`Tiga orang membagi ${T} kelereng dengan perbandingan ${a} : ${b} : ${c}. Bagian orang kedua adalah...`, [
+        `Jumlah bagian = ${a} + ${b} + ${c} = ${jml}.`,
+        `Satu bagian = ${T} ÷ ${jml} = ${T / jml}.`,
+        `Bagian orang kedua = ${b} × ${T / jml} = ${r}.`],
+      opsi(r, [T / jml * a, T / jml * c, r + T / jml, r - T / jml, T / 3]));
+    }]
+  ];
+
+  G["Dasar Aljabar"] = [
+    [1, () => {
+      const x = rnd(2, 40), a = rnd(2, 30), b = x + a;
+      return lk(`Jika x + ${a} = ${b}, maka x = ...`, [
+        `Agar x sendirian, kurangi kedua ruas dengan ${a}.`,
+        `x = ${b} − ${a} = ${x}.`],
+      opsi(x, [b + a, x + 1, x - 1, a, b]));
+    }],
+    [1, () => {
+      const x = rnd(2, 15), a = rnd(2, 9), b = a * x;
+      return lk(`Jika ${a}x = ${b}, maka x = ...`, [
+        `${a}x artinya ${a} dikali x. Bagi kedua ruas dengan ${a}.`,
+        `x = ${b} ÷ ${a} = ${x}.`],
+      opsi(x, [b - a, b + a, x + 1, x - 1, a]));
+    }],
+    [1, () => {
+      const x = rnd(1, 9), a = rnd(2, 6), b = rnd(1, 9), r = a * x + b;
+      return lk(`Jika x = ${x}, nilai ${a}x + ${b} adalah...`, [
+        `Ganti x dengan ${x}: ${a} × ${x} + ${b}.`,
+        `${a} × ${x} = ${a * x}, lalu ${a * x} + ${b} = ${r}.`],
+      opsi(r, [a + x + b, r + a, r - b, a * (x + b), r + 1]));
+    }],
+    [1, () => {
+      const a = rnd(2, 9), b = rnd(2, 9), c = rnd(1, 5), r = a + b - c, simp = `${r}x`;
+      if (r <= 1) return G["Dasar Aljabar"][3][1]();
+      return lk(`Bentuk sederhana dari ${a}x + ${b}x − ${c}x adalah...`, [
+        `Suku-sukunya sejenis (semua x), jadi koefisiennya boleh dijumlah dan dikurangi.`,
+        `${a} + ${b} − ${c} = ${r}.`,
+        `Jadi hasilnya ${simp}.`],
+      opsi(simp, [`${a + b + c}x`, `${a + b - c + 1}x`, `${a * b}x`, `${a + b}x − ${c}`, `${Math.max(1, r - 1)}x`].filter((v, i, ar) => ar.indexOf(v) === i && v !== simp)));
+    }],
+    [2, () => {
+      const x = rnd(2, 15), a = rnd(2, 8), b = rnd(1, 20), c = a * x + b;
+      return lk(`Jika ${a}x + ${b} = ${c}, maka x = ...`, [
+        `Kurangi kedua ruas dengan ${b}: ${a}x = ${c} − ${b} = ${c - b}.`,
+        `Bagi kedua ruas dengan ${a}: x = ${c - b} ÷ ${a} = ${x}.`],
+      opsi(x, [(c + b) / a, c - b, x + 1, x - 1, c / a]));
+    }],
+    [2, () => {
+      const x = rnd(2, 15), a = rnd(2, 8), b = rnd(1, 20), c = a * x - b;
+      return lk(`Jika ${a}x − ${b} = ${c}, maka x = ...`, [
+        `Tambahkan ${b} pada kedua ruas: ${a}x = ${c} + ${b} = ${c + b}.`,
+        `Bagi kedua ruas dengan ${a}: x = ${c + b} ÷ ${a} = ${x}.`],
+      opsi(x, [(c - b) / a, c + b, x + 1, x - 1, c / a]));
+    }],
+    [2, () => {
+      const x = rnd(3, 20), b = rnd(2, 9);
+      return lk(`Tiga kali suatu bilangan ditambah ${b} sama dengan ${3 * x + b}. Bilangan itu adalah...`, [
+        `Tulis dalam model: 3x + ${b} = ${3 * x + b}.`,
+        `Kurangi ${b} pada kedua ruas: 3x = ${3 * x}.`,
+        `Bagi 3: x = ${x}.`],
+      opsi(x, [x + 1, x - 1, 3 * x, x + b, 3 * x + b]));
+    }],
+    [3, () => {
+      let a, c, x, b, d;
+      do { x = rnd(2, 12); a = rnd(4, 9); c = rnd(2, a - 1); b = rnd(1, 15); d = (a - c) * x + b; } while (a === c);
+      return lk(`Jika ${a}x + ${b} = ${c}x + ${d}, maka x = ...`, [
+        `Kumpulkan suku x di satu ruas: ${a}x − ${c}x = ${d} − ${b}.`,
+        `${a - c}x = ${d - b}.`,
+        `x = ${d - b} ÷ ${a - c} = ${x}.`],
+      opsi(x, [x + 1, x - 1, (d + b) / (a + c), d - b, (a - c) * x]));
+    }]
+  ];
+
+  G["Dasar Soal Cerita"] = [
+    [1, () => {
+      const n = rnd(3, 9), p = rnd(2, 15) * 1000, bayar = Math.ceil((n * p + 1000) / 10000) * 10000, r = bayar - n * p;
+      return lk(`Ibu membeli ${n} buah mangga seharga ${rp(p)} per buah dan membayar dengan uang ${rp(bayar)}. Uang kembaliannya adalah...`, [
+        `Total harga = ${n} × ${rp(p)} = ${rp(n * p)}.`,
+        `Kembalian = uang yang dibayar − total harga = ${rp(bayar)} − ${rp(n * p)} = ${rp(r)}.`],
+      opsi(r, [n * p, bayar - p, r + 1000, r - 1000, bayar + n * p], rp));
+    }],
+    [1, () => {
+      const a = rnd(30, 90), b = rnd(10, a - 5), r = a - b;
+      return lk(`Di sebuah kelas ada ${a} siswa. ${b} siswa mengikuti ekstrakurikuler. Siswa yang tidak mengikuti ekstrakurikuler ada...`, [
+        `Yang tidak ikut = jumlah seluruh siswa − yang ikut.`,
+        `${a} − ${b} = ${r}.`],
+      opsi(r, [a + b, r + 1, r - 1, r + 10, b]));
+    }],
+    [1, () => {
+      const n = rnd(20, 90), k = rnd(3, 9), q = Math.floor(n / k), s = n - q * k;
+      return lk(`${n} siswa dibagi menjadi kelompok yang masing-masing beranggotakan ${k} siswa. Banyak kelompok penuh yang terbentuk adalah...`, [
+        `Bagi ${n} dengan ${k}: ${n} ÷ ${k}.`,
+        `${k} × ${q} = ${q * k}, sisanya ${s} siswa belum cukup membentuk satu kelompok penuh.`,
+        `Jadi ada ${q} kelompok penuh.`],
+      opsi(q, [q + 1, q - 1, s, n - k, q + 2]));
+    }],
+    [2, () => {
+      const m = rnd(4, 6), nilai = Array.from({ length: m - 1 }, () => rnd(60, 95)), target = rnd(75, 88), perlu = target * m - nilai.reduce((x, y) => x + y, 0);
+      if (perlu < 40 || perlu > 100) return G["Dasar Soal Cerita"][3][1]();
+      return lk(`Nilai ${m - 1} ujian Dina adalah ${nilai.join(", ")}. Agar rata-rata ${m} ujian menjadi ${target}, nilai ujian terakhir harus...`, [
+        `Jumlah nilai yang dibutuhkan = ${m} × ${target} = ${m * target}.`,
+        `Jumlah nilai sekarang = ${nilai.join(" + ")} = ${nilai.reduce((x, y) => x + y, 0)}.`,
+        `Nilai terakhir = ${m * target} − ${nilai.reduce((x, y) => x + y, 0)} = ${perlu}.`],
+      opsi(perlu, [target, perlu + 5, perlu - 5, perlu + 10, Math.round(nilai.reduce((x, y) => x + y, 0) / (m - 1))]));
+    }],
+    [2, () => {
+      const v = rnd(3, 12) * 10, t = rnd(2, 6), j = v * t;
+      return lk(`Sebuah sepeda motor melaju dengan kecepatan ${v} km/jam selama ${t} jam. Jarak yang ditempuh adalah... km.`, [
+        `Jarak = kecepatan × waktu.`,
+        `${v} × ${t} = ${j} km.`],
+      opsi(j, [v + t, j + v, j - v, v / t, j * 2]));
+    }],
+    [2, () => {
+      const T = rnd(10, 60) * 10000, s = rnd(3, 9) * 10000, sd = rnd(1, 4) * 10000, w = Math.ceil((T - sd) / s);
+      if (T <= sd) return G["Dasar Soal Cerita"][5][1]();
+      return lk(`Rudi ingin membeli sepatu seharga ${rp(T)}. Ia sudah punya tabungan ${rp(sd)} dan menabung ${rp(s)} setiap minggu. Paling sedikit berapa minggu lagi ia dapat membeli sepatu itu?`, [
+        `Uang yang masih kurang = ${rp(T)} − ${rp(sd)} = ${rp(T - sd)}.`,
+        `${rp(T - sd)} ÷ ${rp(s)} = ${(T - sd) / s}, dibulatkan ke atas karena harus mencukupi.`,
+        `Jadi paling sedikit ${w} minggu.`],
+      opsi(w, [w + 1, w - 1 > 0 ? w - 1 : w + 2, Math.floor((T - sd) / s) || w + 3, Math.ceil(T / s), w + 2]));
+    }],
+    [3, () => {
+      const k = rnd(3, 5), a = rnd(2, 9), jml = a * (k + 1), r = a * k;
+      return lk(`Umur ayah ${k} kali umur anaknya. Jumlah umur mereka ${jml} tahun. Umur ayah adalah... tahun.`, [
+        `Misalkan umur anak = a, maka umur ayah = ${k}a.`,
+        `Jumlah: a + ${k}a = ${k + 1}a = ${jml}, sehingga a = ${a}.`,
+        `Umur ayah = ${k} × ${a} = ${r} tahun.`],
+      opsi(r, [a, jml - r + a, r + a, r - a, jml]));
+    }],
+    [3, () => {
+      const p = rnd(2, 9) * 1000, q = rnd(2, 9) * 1000, a = rnd(2, 6), b = rnd(2, 6), tot = a * p + b * q;
+      return lk(`Toko menjual pensil seharga ${rp(p)} dan buku seharga ${rp(q)}. Sinta membeli ${a} pensil dan ${b} buku. Total yang harus dibayar adalah...`, [
+        `Harga pensil: ${a} × ${rp(p)} = ${rp(a * p)}.`,
+        `Harga buku: ${b} × ${rp(q)} = ${rp(b * q)}.`,
+        `Total: ${rp(a * p)} + ${rp(b * q)} = ${rp(tot)}.`],
+      opsi(tot, [a * q + b * p, (a + b) * (p + q), tot + 1000, tot - 1000, p + q], rp));
+    }]
+  ];
+
   // ================= API =================
   const ALIAS = { "TIU Numerik": "Numerik" };
   let urut = 0;
   const kunci = (s) => s.q + "|" + s.opts.slice().sort().join("¦"); // q saja bisa sama (mis. klasifikasi kata)
   const GEN = {
     ada: (topik) => !!G[ALIAS[topik] || topik],
+    // Daftar templat [level, fungsi] satu topik; dipakai check.js untuk memperkirakan jumlah varian per templat.
+    templat: (topik) => G[ALIAS[topik] || topik] || [],
     // Satu soal baru untuk topik; level 1-3 (acak bila kosong). Bentuk sama dengan soal bank.
     buat(topik, level) {
       const L = G[ALIAS[topik] || topik];
@@ -1207,9 +1964,10 @@
       return m.concat(GEN.banyak(topik, butuh - m.length, m.map(kunci)));
     },
     // Tambahan soal mode latihan tanpa akhir: jml soal dari topik-topik yang punya generator.
-    lagi(topiks, jml) {
+    // level (opsional): paksa level 1-3, misalnya mengikuti level adaptif latihan.
+    lagi(topiks, jml, level) {
       const ts = topiks.filter(GEN.ada);
-      return ts.length ? Array.from({ length: jml }, (_, i) => GEN.buat(ts[i % ts.length])) : [];
+      return ts.length ? Array.from({ length: jml }, (_, i) => GEN.buat(ts[i % ts.length], level)) : [];
     },
     // jml soal unik (juga dari daftar kunci `hindari`), sebaran level 30/40/30.
     banyak(topik, jml, hindari) {

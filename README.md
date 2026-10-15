@@ -10,7 +10,8 @@ Ada akun user dan akun master yang memantau hasil tryout.
 | `web/` | **Aplikasi yang dihosting** (Next.js + SQLite). Panduan hosting: `web/DEPLOY.md` |
 | `gen.js`, `bank/`, `config.js` | Sumber soal: generator, bank soal, definisi tes |
 | `sync.js` | Menyalin sumber soal ke `web/data` (jalankan setelah mengubah soal/config) |
-| `check.js` | Validasi bank soal, generator, config, dan sinkron `web/data` |
+| `check.js` | Validasi bank soal, generator, config, sinkron `web/data`, dan data materi |
+| `scripts/render-modul.py` | Mengubah modul belajar PDF asli menjadi `web/data/materi-ipa11.js` + gambar halaman (`web/public/materi-ipa11/`) untuk fitur Materi: `python scripts/render-modul.py <file.pdf>` (butuh PyMuPDF: `pip install PyMuPDF`). Penjelasan singkat per bab ditulis manual di `web/data/materi-penjelasan.js` (kunci = id bab) |
 | `index.html`, `app.js`, `style.css` | Versi vanilla offline (tanpa akun, buka langsung di browser) |
 | `deploy/` | `docker-compose.yml`, `.env.example`, dan `update.sh` untuk hosting di VPS |
 

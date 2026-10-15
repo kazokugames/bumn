@@ -75,6 +75,8 @@ for (const [nama, soalList] of Object.entries(BANK)) {
 const GEN = require("./gen.js");
 const topikGen = new Set();
 for (const tes of CONFIG.tes) for (const t of Object.keys(tes.komposisi)) if (GEN.ada(t)) topikGen.add(t);
+const topikFondasi = (CONFIG.belajar && CONFIG.belajar.fondasi) || [];
+for (const t of topikFondasi) { if (!GEN.ada(t)) errors.push("fondasi '" + t + "' tidak punya generator"); else topikGen.add(t); }
 for (const t of topikGen) {
   for (let lv = 1; lv <= 3; lv++) {
     for (let i = 0; i < (DEEP ? 3000 : 300); i++) {
@@ -85,11 +87,89 @@ for (const t of topikGen) {
       else if (!(s.ans >= 0 && s.ans < s.opts.length)) errors.push(tag + " — ans di luar rentang");
       else if (!s.bahas || (!s.opts[s.ans].startsWith("<svg") && !s.bahas.includes(s.opts[s.ans]))) errors.push(tag + " — bahas tidak memuat kunci '" + s.opts[s.ans] + "': " + s.bahas);
       if (/NaN|undefined|Infinity/.test(s.q + s.opts.join() + s.bahas)) errors.push(tag + " — NaN/undefined");
+      if (topikFondasi.includes(t)) { // soal fondasi wajib membawa langkah pengerjaan yang konsisten dengan kunci
+        if (!Array.isArray(s.langkah) || s.langkah.length < 2 || s.langkah.some((x) => typeof x !== "string" || !x.trim())) errors.push(tag + " — langkah wajib berupa larik >= 2 string");
+        else if (!s.langkah[s.langkah.length - 1].includes(s.opts[s.ans])) errors.push(tag + " — langkah terakhir tidak memuat kunci '" + s.opts[s.ans] + "'");
+      }
       if (s.opts.some((o) => !String(o).trim())) errors.push(tag + " — ada opsi kosong");
       if (s.q.length > LIM.q || s.bahas.length > LIM.bahas || s.opts.some((o) => o.length > LIM.opt)) errors.push(tag + " — melebihi batas ukuran server");
     }
   }
   console.log("gen OK: " + t);
+}
+
+// Perkiraan jumlah soal unik per topik generator. Jalankan: VARIAN=1 node check.js (atau VARIAN=100000 untuk sampel lebih besar).
+// Tiap TEMPLAT diukur sendiri-sendiri (templat kecil seperti deret huruf tidak boleh mengaburkan templat besar): ambil N soal,
+// hitung tabrakan kunci (soal + opsi). Ada tabrakan: ukuran ruang ~ N^2 / (2 x tabrakan). Tanpa tabrakan: ruang >= N^2 / 6
+// dengan keyakinan ~95% (paradoks ulang tahun), jadi hanya batas bawah. Total topik = jumlah ruang semua templatnya.
+// Topik yang hanya nama lain dari topik lain (alias) ditampilkan tetapi tidak dijumlahkan ke total.
+if (process.env.VARIAN) {
+  const N = Number(process.env.VARIAN) > 1 ? Number(process.env.VARIAN) : 20000;
+  const alias = new Set(["TIU Numerik", "TIU Verbal", "TIU Figural", "Bahasa Inggris", "Matriks & Pola"]);
+  const juta = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1) + " miliar" : n >= 1e6 ? (n / 1e6).toFixed(1) + " juta" : Math.round(n / 1000) + " ribu");
+  let total = 0;
+  console.log("\n== Perkiraan varian soal unik (sampel " + N.toLocaleString("id-ID") + " per templat) ==");
+  for (const t of topikGen) {
+    let jumlah = 0, batasBawah = false;
+    const kecil = [];
+    GEN.templat(t).forEach(([lv, fn], idx) => {
+      const lihat = new Set();
+      let tabrak = 0, contoh = "";
+      for (let i = 0; i < N; i++) {
+        const s = fn();
+        contoh = contoh || s.q.replace(/<[^>]+>/g, "").slice(0, 45);
+        const k = s.q + "|" + s.opts.slice().sort().join("¦");
+        if (lihat.has(k)) tabrak++; else lihat.add(k);
+      }
+      const perk = tabrak ? N * N / (2 * tabrak) : N * N / 6;
+      if (!tabrak) batasBawah = true;
+      jumlah += perk;
+      kecil.push([perk, "L" + lv + " " + contoh]);
+    });
+    if (!alias.has(t)) total += jumlah;
+    kecil.sort((a, b) => a[0] - b[0]);
+    console.log("  " + t.padEnd(26) + (batasBawah ? ">= " : "~ ") + juta(jumlah).padEnd(12) + (alias.has(t) ? "(alias)  " : "") + GEN.templat(t).length + " templat; terkecil: " + kecil.slice(0, 2).map((k) => juta(k[0]) + " [" + k[1] + "]").join(" | "));
+  }
+  console.log("  TOTAL varian unik (semua topik, tanpa alias): >= " + juta(total));
+}
+
+// Cakupan verifikasi soal pengetahuan (TWK): tes berpenanda `verifikasi` harus punya cukup soal terverifikasi.
+{
+  const wk = Object.values(BANK).flat().filter((s) => s.topik === "Wawasan Kebangsaan");
+  const ver = wk.filter((s) => s.verif);
+  console.log("\nTWK: " + ver.length + " dari " + wk.length + " soal terverifikasi (" + Math.round(ver.length / wk.length * 100) + "%)");
+  for (const s of ver) if (!s.sumber || typeof s.sumber !== "string") errors.push("soal " + s.id + " berpenanda verif tetapi tanpa sumber");
+  for (const tes of CONFIG.tes.filter((t) => t.verifikasi)) {
+    const butuh = tes.komposisi["Wawasan Kebangsaan"] || 0;
+    if (butuh && ver.length < butuh * 3) errors.push("tes " + tes.id + " — soal TWK terverifikasi (" + ver.length + ") kurang dari 3x kebutuhan (" + butuh * 3 + ")");
+  }
+}
+
+// Audit bias panjang opsi TKP: panjang opsi tidak boleh menjadi petunjuk jawaban (itu melatih kebiasaan menebak, bukan menilai situasi).
+{
+  const tkp = Object.values(BANK).flat().filter((s) => s.skor && /^TKP /.test(s.topik));
+  const kor = (x, y) => {
+    const n = x.length, mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; syy += (y[i] - my) ** 2; }
+    return sxx && syy ? sxy / Math.sqrt(sxx * syy) : 0;
+  };
+  const per = {};
+  let terpanjang = 0;
+  for (const s of tkp) {
+    const len = s.opts.map((o) => o.length);
+    (per[s.topik] = per[s.topik] || []).push(kor(len, s.skor));
+    if (len.indexOf(Math.max(...len)) === s.skor.indexOf(Math.max(...s.skor))) terpanjang++;
+  }
+  console.log("\nAudit TKP (korelasi panjang opsi dengan skor, 0 = tidak ada petunjuk):");
+  for (const t of Object.keys(per)) {
+    const r = per[t].reduce((a, b) => a + b, 0) / per[t].length;
+    console.log("  " + t.padEnd(24) + r.toFixed(2));
+    if (Math.abs(r) > 0.3) errors.push(t + " — panjang opsi menjadi petunjuk jawaban (korelasi rata-rata " + r.toFixed(2) + ", batas 0,30)");
+  }
+  const bagi = tkp.length ? terpanjang / tkp.length : 0;
+  console.log("  opsi terpanjang = opsi terbaik pada " + Math.round(bagi * 100) + "% soal (acak murni 20%)");
+  if (tkp.length && (bagi > 0.4 || bagi < 0.05)) errors.push("TKP — proporsi opsi terpanjang sama dengan opsi terbaik " + Math.round(bagi * 100) + "% di luar rentang 5-40%");
 }
 
 // Konfigurasi tes: jumlah, komposisi, dan kecukupan soal.
@@ -132,6 +212,29 @@ if (fs2.existsSync(path.join(root, "web", "data", "gen.js"))) {
   const cfgRoot = fs2.readFileSync(path.join(root, "config.js"), "utf8").split("\n").filter((l) => /id: "|durasiMenit|jumlahSoal|passingGrade|komposisi|bank:/.test(l)).map((l) => l.trim()).join("|");
   const cfgWeb = fs2.readFileSync(path.join(root, "web", "data", "config.js"), "utf8").split("\n").filter((l) => /id: "|durasiMenit|jumlahSoal|passingGrade|komposisi|bank:/.test(l)).map((l) => l.trim()).join("|");
   if (cfgRoot !== cfgWeb) errors.push("config.js dan web/data/config.js berbeda (id/durasi/jumlah/komposisi/bank)");
+}
+
+// Data materi hasil parser (web/data/materi-ipa11.js): ada, bab cukup, ukuran wajar.
+const matF = path.join(root, "web", "data", "materi-ipa11.js");
+if (!fs2.existsSync(matF)) errors.push("web/data/materi-ipa11.js tidak ada — jalankan: python scripts/render-modul.py <file.pdf>");
+else {
+  const matSrc = fs2.readFileSync(matF, "utf8");
+  const kb = Math.round(matSrc.length / 1024);
+  if (kb > 2048) errors.push("materi-ipa11.js kebesaran: " + kb + " KB (maks 2 MB)");
+  const jmlBab = (matSrc.match(/"img":/g) || []).length;
+  if (jmlBab < 30) errors.push("materi-ipa11.js hanya berisi " + jmlBab + " bab (< 30) — parser bermasalah?");
+  const pubDir = path.join(root, "web", "public", "materi-ipa11");
+  const jmlGambar = fs2.existsSync(pubDir) ? fs2.readdirSync(pubDir).filter((f) => f.endsWith(".jpg")).length : 0;
+  if (jmlGambar < jmlBab) errors.push("web/public/materi-ipa11 hanya punya " + jmlGambar + " gambar (< " + jmlBab + " bab) — jalankan ulang parser");
+  // Penjelasan per bab: ada untuk semua bab.
+  const pjF = path.join(root, "web", "data", "materi-penjelasan.js");
+  if (!fs2.existsSync(pjF)) errors.push("web/data/materi-penjelasan.js tidak ada — tulis penjelasan tiap bab");
+  else {
+    const pjSrc = fs2.readFileSync(pjF, "utf8");
+    const ids = [...matSrc.matchAll(/"id":\s*"([^"]+)"/g)].map((m) => m[1]).filter((id) => /-\d{3}$/.test(id));
+    const kurang = ids.filter((id) => !pjSrc.includes('"' + id + '"'));
+    if (kurang.length) errors.push("materi-penjelasan.js kurang untuk " + kurang.length + " bab: " + kurang.slice(0, 5).join(", ") + (kurang.length > 5 ? ", ..." : ""));
+  }
 }
 
 console.log("\nTOTAL: " + totalSoal + " soal, " + ids.size + " id unik");

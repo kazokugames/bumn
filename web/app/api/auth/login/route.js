@@ -15,11 +15,11 @@ export async function POST(request) {
   if (!batasi(`masuk:${ip}:${body.username.toLowerCase()}`, 10, 15 * 60 * 1000)) return galat("Terlalu banyak percobaan. Coba lagi dalam 15 menit.", 429);
   // batas per username tanpa melihat IP: menahan tebakan password walau IP dipalsukan (konsekuensi: akun bisa terkunci 15 menit)
   if (!batasi(`masuk-user:${body.username.toLowerCase()}`, 30, 15 * 60 * 1000)) return galat("Terlalu banyak percobaan untuk akun ini. Coba lagi dalam 15 menit.", 429);
-  const u = db().prepare("SELECT id, username, nama, role, pw, aktif FROM users WHERE username = ?").get(body.username);
+  const u = db().prepare("SELECT id, username, nama, role, pw, aktif, aktif_sampai AS aktifSampai FROM users WHERE username = ?").get(body.username);
   const cocok = await cekPassword(body.password, u ? u.pw : await hashPalsu());
   if (!u || !cocok) return galat("Username atau password salah.", 401);
   if (!u.aktif) return galat("Akun dinonaktifkan. Hubungi master.", 403);
-  const res = NextResponse.json({ user: { id: u.id, username: u.username, nama: u.nama, role: u.role } });
+  const res = NextResponse.json({ user: { id: u.id, username: u.username, nama: u.nama, role: u.role, aktifSampai: u.aktifSampai } });
   setCookieSesi(res, buatSesi(u.id));
   return res;
 }

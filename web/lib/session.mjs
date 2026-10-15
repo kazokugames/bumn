@@ -19,6 +19,9 @@ export async function wajibMaster() {
   if (err) return { err };
   return u.role === "master" ? { u } : { err: galat("Khusus master.", 403) };
 }
+// Masa aktif langganan: master dan akun tanpa batas (aktifSampai kosong) selalu lolos. Mengembalikan respons galat bila habis.
+export const masaAktif = (u) => u.role === "master" || !u.aktifSampai || new Date(u.aktifSampai) > new Date();
+export const wajibAktif = (u) => (masaAktif(u) ? null : galat("Masa aktif akunmu habis. Masukkan kode aktivasi dari bimbelmu.", 402));
 // Alamat IP klien untuk pembatas laju. Hanya percaya header yang diisi proxy tepercaya:
 //   IP_HEADER=cf-connecting-ip   (Cloudflare Tunnel; Cloudflare menimpa header ini, tidak bisa dipalsukan klien)
 //   IP_HEADER=x-forwarded-for    (default; nginx dengan "X-Forwarded-For $remote_addr")

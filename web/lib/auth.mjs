@@ -50,7 +50,9 @@ export function hapusSesi(token) { db().prepare("DELETE FROM sessions WHERE toke
 export function userDariToken(token) {
   if (!token) return null;
   return db().prepare(
-    `SELECT u.id, u.username, u.nama, u.role FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.username, u.nama, u.role, u.aktif_sampai AS aktifSampai,
+            EXISTS(SELECT 1 FROM kelas_anggota k WHERE k.user_id = u.id AND k.peran = 'tutor') AS tutor
+     FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token = ? AND s.kedaluwarsa > ? AND u.aktif = 1`).get(sha(token), Date.now()) || null;
 }
 

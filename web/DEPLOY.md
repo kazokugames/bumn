@@ -24,6 +24,19 @@ Image dibangun otomatis oleh GitHub Actions (`.github/workflows/image.yml`) dan 
 
 Batasan jalur A: tanpa terminal host, cadangan otomatis ke luar server tidak tersedia dari skrip kami. Yang ada adalah cadangan mingguan seluruh disk dari Hostinger (menu *Backups*). Bila kelak ada akses terminal, gunakan bagian "Cadangan dan pemulihan" di bawah.
 
+## Menjual ke beberapa bimbel (satu pemasangan per bimbel)
+Setiap bimbel mendapat **proyek Docker sendiri** dari image yang sama. Data tidak pernah bercampur karena tiap proyek punya volume dan database sendiri.
+
+1. **Satu proyek per bimbel.** Di Docker Manager buat proyek baru dengan **nama berbeda** (mis. `bimbel-garuda`), tempel `deploy/docker-compose.hostinger.yml`, lalu ganti semua nama `bumn-tes` menjadi nama proyek itu (nama container, volume `...-data`, jaringan, dan proyek). Nama yang sama dengan proyek lain akan menimpa data bimbel lain, jadi periksa dua kali.
+2. **Subdomain dan tunnel sendiri per bimbel** (`garuda.domainanda.com`), dengan token tunnel masing-masing.
+3. **Identitas:** isi `NAMA_BIMBEL` dan `WARNA` pada variabel lingkungan proyek itu.
+4. **Akses berbayar:** pakai `REGISTRASI=kode`. Master membuat kode di menu *Pantau User* > *Kode aktivasi* (mis. 30 kode, 90 hari). Siswa memasukkan kode saat mendaftar atau di banner perpanjangan. Akun yang masa aktifnya habis tetap bisa melihat riwayat, tetapi tidak bisa menyimpan hasil, tryout, dan belajar. Akun lama dan master tidak dibatasi.
+5. **Master per bimbel:** buat dengan `node scripts/buat-master.mjs` di container `app` proyek itu. Master satu bimbel tidak punya akses ke bimbel lain.
+6. **Pembaruan:** push, tunggu Actions hijau, lalu deploy ulang **setiap** proyek bimbel (satu per satu). Database bermigrasi otomatis saat container naik.
+7. **Cadangan:** `scripts/cadangkan.mjs` per proyek (bagian Jalur B); jangan menyimpan cadangan satu bimbel di tempat yang bisa diakses bimbel lain.
+
+Batasan yang perlu diketahui sebelum menjual: Mode Latihan dan ujian biasa dinilai di browser, sehingga pembatasan masa aktif untuk dua hal itu hanya di tampilan; penyimpanan hasil, tryout terjadwal, dan Mode Belajar ditegakkan di server. Teks Kebijakan Privasi di halaman masuk adalah ringkasan umum, bukan nasihat hukum; sesuaikan dengan ketentuan bimbel dan tinjau oleh ahli hukum sebelum dipakai komersial.
+
 # Jalur B — dengan akses terminal server (SSH / web console)
 
 ## 0. Sebelum go-live (di komputer pengembangan)

@@ -1,0 +1,1 @@
+{"action":"cdp","args":{"method":"Input.dispatchMouseEvent","params":{"type":"mousePressed","x":854,"y":287,"button":"left","clickCount":1}},"session":"hosting-nas"}

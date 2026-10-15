@@ -2,16 +2,15 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { CONFIG, PANDUAN } from "../data/config";
-import tkd from "../data/bumn-tkd";
-import akhlak from "../data/bumn-akhlak";
-import english from "../data/bumn-english";
-import bidang from "../data/bumn-bidang";
-import akpol from "../data/akpol";
-import sipss from "../data/sipss";
-import wk from "../data/bumn-wk";
-import psiko from "../data/polri-psiko";
 import GEN from "../data/gen";
-import DOMPurify from "dompurify";
+import { BANK, bankTes, shuffleOpts, susunSoal } from "../lib/susun.mjs";
+import { api, tgl, durasiTeks, bersih } from "./klien";
+import Tryout from "./tryout";
+import Belajar from "./belajar";
+import Rencana from "./rencana";
+import { hitungSubtes } from "../lib/subtes.mjs";
+import MATERI from "../data/materi-ipa11";
+import PENJELASAN from "../data/materi-penjelasan";
 import {
   House, ClipboardList, ShieldCheck, Building2, History, Moon, Sun, Clock, ListChecks, Target, Flame, TrendingUp,
   BookOpen, Play, ChevronLeft, ChevronRight, Flag, Check, X, Trophy, GraduationCap, ChartColumn, Sparkles, Trash2,
@@ -20,10 +19,6 @@ import {
   Zap, Users, RefreshCw, HeartHandshake, Globe, Code, Sigma, PenLine, Medal, Award, Rocket,
   LogOut, UserRound, UserPlus, KeyRound, Eye, UserX, UserCheck, Lock,
 } from "lucide-react";
-
-const BANK = { "bumn-tkd": tkd, "bumn-akhlak": akhlak, "bumn-english": english, "bumn-bidang": bidang, "bumn-wk": wk, "polri-psiko": psiko, akpol, sipss };
-// satu tes boleh memakai beberapa bank (bank: ["akpol", "sipss"])
-const bankTes = (tes) => [].concat(tes.bank).reduce((a, b) => a.concat(BANK[b] || []), []);
 
 const DISCLAIMER =
   "Soal di aplikasi ini adalah soal latihan buatan sendiri yang mengikuti pola dan kisi-kisi seleksi 2021–2026. Ini <b>bukan</b> soal asli resmi. Passing grade, durasi, dan tahapan hanyalah perkiraan. Selalu cek pengumuman resmi tiap periode.";
@@ -42,23 +37,6 @@ function IkonTopik({ t, size = 18 }) {
 }
 
 // ---------- util ----------
-function shuffle(a) {
-  a = a.slice();
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-function shuffleOpts(soal) {
-  const idx = shuffle(soal.opts.map((_, i) => i));
-  return {
-    id: soal.id, topik: soal.topik, q: soal.q, bahas: soal.bahas, level: soal.level,
-    opts: idx.map((i) => soal.opts[i]),
-    ans: idx.indexOf(soal.ans),
-    skor: soal.skor ? idx.map((i) => soal.skor[i]) : null,
-  };
-}
 const topikLatihan = (S) => (S.topikFilter ? [S.topikFilter] : Object.keys(S.tes.komposisi));
 const skorSoal = (soal, j) => (j == null ? 0 : soal.skor ? soal.skor[j] || 0 : j === soal.ans ? 1 : 0);
 const skorMaksSoal = (soal) => (soal.skor ? Math.max(...soal.skor) : 1);
@@ -67,21 +45,6 @@ const fmt = (s) => {
   return (m < 10 ? "0" : "") + m + ":" + (d < 10 ? "0" : "") + d;
 };
 const huruf = (j) => String.fromCharCode(65 + j);
-
-function susunSoal(tes) {
-  const bank = bankTes(tes);
-  let terpilih = [];
-  const catatan = [];
-  Object.keys(tes.komposisi).forEach((topik) => {
-    const butuh = tes.komposisi[topik];
-    const pool = bank.filter((s) => s.topik === topik);
-    const ambil = GEN.susun(topik, butuh, pool);
-    if (ambil.length < butuh) catatan.push(`${topik}: bank hanya punya ${ambil.length} dari ${butuh} soal`);
-    terpilih = terpilih.concat(ambil);
-  });
-  terpilih.sort((a, b) => (a.level || 1) - (b.level || 1)); // mudah -> sulit
-  return { list: terpilih.map(shuffleOpts), catatan };
-}
 
 function agregat(list) {
   const jml = { n: list.length, pct: 0, topik: {}, terakhir: list[list.length - 1] || null, daftar: list };
@@ -231,25 +194,74 @@ function SetupLatihan({ tes, onMulai, onBatal }) {
 }
 
 // ---------- akun & server ----------
-async function api(path, method = "GET", body) {
-  const r = await fetch(path, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
-  let j = null;
-  try { j = await r.json(); } catch {}
-  if (!r.ok) throw new Error((j && j.galat) || "Terjadi kesalahan. Coba lagi.");
-  return j;
-}
-// HTML soal yang berasal dari server (bisa dipalsukan oleh user lewat API) wajib dibersihkan sebelum dirender.
-const bersih = (h) => DOMPurify.sanitize(String(h), {
-  USE_PROFILES: { html: true, svg: true },
-  FORBID_TAGS: ["form", "input", "button", "textarea", "select", "option", "label", "style", "link", "meta", "base", "iframe", "object", "embed", "a", "img", "video", "audio", "source"],
-  FORBID_ATTR: ["action", "formaction", "srcset", "href", "xlink:href"],
-});
-const tgl = (t) => new Date(t).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-const durasiTeks = (d) => `${Math.floor(d / 60)} mnt ${d % 60} dtk`;
 
-function AuthScreen({ onMasuk, temaGelap, ubahTema }) {
+// Formulir kode aktivasi: memperpanjang masa aktif akun.
+function FormKode({ onPakai }) {
+  const [kode, setKode] = useState("");
+  const [galat, setGalat] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+  async function kirim(e) {
+    e.preventDefault();
+    setGalat(""); setSibuk(true);
+    try { await onPakai(kode); setKode(""); } catch (er) { setGalat(er.message); } finally { setSibuk(false); }
+  }
+  return (
+    <form onSubmit={kirim} className="form baris-form">
+      <label>Kode aktivasi<input value={kode} onChange={(e) => setKode(e.target.value)} autoCapitalize="characters" spellCheck="false" required maxLength={20} placeholder="XXXX-XXXX-XXXX" /></label>
+      <button className="btn primary" disabled={sibuk}><KeyRound size={16} /> {sibuk ? "Memeriksa…" : "Pakai kode"}</button>
+      {galat && <div className="galat" role="alert">{galat}</div>}
+    </form>
+  );
+}
+
+// Master: buat kode aktivasi dan lihat pemakaiannya.
+function KodeMaster({ daftar, onBuat }) {
+  const [f, setF] = useState({ jumlah: 10, hari: 90 });
+  const [baru, setBaru] = useState([]);
+  const [galat, setGalat] = useState("");
+  async function kirim(e) {
+    e.preventDefault();
+    setGalat("");
+    try { setBaru(await onBuat({ jumlah: Number(f.jumlah), hari: Number(f.hari) })); } catch (er) { setGalat(er.message); }
+  }
+  return (
+    <div className="kartu fade-up" style={{ marginTop: 16 }}>
+      <h3 className="kartu-judul"><KeyRound size={18} className="ic" /> Kode aktivasi <span className="aksi muted">{daftar.filter((k) => !k.pemakai).length} belum dipakai</span></h3>
+      <p className="muted">Satu kode = satu kali pakai = menambah masa aktif satu akun. Bagikan ke siswa setelah pembayaran. Akun tanpa kode (akun lama dan master) tidak dibatasi.</p>
+      <form onSubmit={kirim} className="form baris-form">
+        <label>Jumlah kode<input type="number" min={1} max={200} value={f.jumlah} onChange={(e) => setF({ ...f, jumlah: e.target.value })} required /></label>
+        <label>Masa aktif (hari)<input type="number" min={1} max={3650} value={f.hari} onChange={(e) => setF({ ...f, hari: e.target.value })} required /></label>
+        <button className="btn primary"><Sparkles size={16} /> Buat kode</button>
+        {galat && <div className="galat" role="alert">{galat}</div>}
+      </form>
+      {baru.length > 0 && (
+        <>
+          <p className="muted">Kode baru, salin sekarang:</p>
+          <textarea readOnly rows={Math.min(8, baru.length)} value={baru.join("\n")} style={{ width: "100%" }} onFocus={(e) => e.target.select()} aria-label="Kode baru" />
+        </>
+      )}
+      {daftar.length > 0 && (
+        <div className="tabel-wrap">
+          <table className="data">
+            <thead><tr><th>Kode</th><th>Masa aktif</th><th>Status</th></tr></thead>
+            <tbody>
+              {daftar.map((k) => (
+                <tr key={k.kode}>
+                  <td><code>{k.kode}</code></td><td>{k.hari} hari</td>
+                  <td>{k.pemakai ? <>Dipakai {k.pemakai} <span className="muted">(@{k.username}) · {tgl(k.dipakaiPada)}</span></> : <span className="badge pass">Belum dipakai</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AuthScreen({ onMasuk, temaGelap, ubahTema, info }) {
   const [mode, setMode] = useState("masuk");
-  const [f, setF] = useState({ username: "", nama: "", password: "" });
+  const [f, setF] = useState({ username: "", nama: "", password: "", kode: "" });
   const [galat, setGalat] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const ubah = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -264,10 +276,10 @@ function AuthScreen({ onMasuk, temaGelap, ubahTema }) {
   return (
     <div className="auth">
       <section className="auth-info">
-        <div className="logo"><div className="logo-ikon"><GraduationCap size={22} aria-hidden="true" /></div><div>Simulasi Tes<small>POLRI · BUMN</small></div></div>
+        <div className="logo"><div className="logo-ikon"><GraduationCap size={22} aria-hidden="true" /></div><div>{info.nama}<small>CPNS · POLRI · BUMN</small></div></div>
         <h1>Latihan seleksi dengan timer, pembahasan, dan pemantauan.</h1>
         <ul>
-          <li><CircleCheck size={18} className="ic" /> Soal latihan tak terhingga untuk Akpol, SIPSS, Bintara, dan BUMN</li>
+          <li><CircleCheck size={18} className="ic" /> Miliaran variasi soal hitungan, logika, dan kecermatan untuk SKD CPNS, Polri, dan BUMN</li>
           <li><CircleCheck size={18} className="ic" /> Riwayat dan analisis topik terlemah tersimpan di akunmu</li>
           <li><CircleCheck size={18} className="ic" /> Hasil tryout dapat dilihat oleh master (pengelola) untuk pendampingan</li>
         </ul>
@@ -276,7 +288,7 @@ function AuthScreen({ onMasuk, temaGelap, ubahTema }) {
         <button className="tombol-tema auth-tema" onClick={ubahTema} aria-label="Ganti tema">{temaGelap ? <Sun size={18} /> : <Moon size={18} />}</button>
         <div className="tabs" role="tablist">
           <button role="tab" aria-selected={mode === "masuk"} className={mode === "masuk" ? "aktif" : ""} onClick={() => { setMode("masuk"); setGalat(""); }}>Masuk</button>
-          <button role="tab" aria-selected={mode === "daftar"} className={mode === "daftar" ? "aktif" : ""} onClick={() => { setMode("daftar"); setGalat(""); }}>Daftar</button>
+          {info.registrasi !== "tutup" && <button role="tab" aria-selected={mode === "daftar"} className={mode === "daftar" ? "aktif" : ""} onClick={() => { setMode("daftar"); setGalat(""); }}>Daftar</button>}
         </div>
         <h2>{mode === "masuk" ? "Selamat datang kembali" : "Buat akun baru"}</h2>
         <form onSubmit={kirim} className="form">
@@ -291,10 +303,19 @@ function AuthScreen({ onMasuk, temaGelap, ubahTema }) {
           <label>Password
             <input type="password" value={f.password} onChange={ubah("password")} autoComplete={mode === "masuk" ? "current-password" : "new-password"} required minLength={mode === "daftar" ? 8 : 1} maxLength={100} />
           </label>
+          {mode === "daftar" && (
+            <label>Kode aktivasi{info.registrasi === "kode" ? "" : " (jika punya)"}
+              <input value={f.kode} onChange={ubah("kode")} autoCapitalize="characters" spellCheck="false" required={info.registrasi === "kode"} maxLength={20} placeholder="XXXX-XXXX-XXXX" />
+            </label>
+          )}
           {mode === "daftar" && <p className="muted">Username 3–30 karakter (huruf, angka, titik, strip, garis bawah). Password minimal 8 karakter.</p>}
           {galat && <div className="galat" role="alert">{galat}</div>}
           <button className="btn primary besar" disabled={sibuk}>{sibuk ? "Memproses…" : mode === "masuk" ? "Masuk" : "Daftar & masuk"}</button>
         </form>
+        <details className="muted" style={{ marginTop: 16 }}>
+          <summary>Kebijakan privasi</summary>
+          <p>Data yang disimpan: nama, username, serta hasil dan jawaban tryout. Hanya pengelola (master) dan tutor kelasmu yang dapat melihat hasilmu. Data tidak dijual atau dibagikan ke pihak lain. Hubungi pengelola untuk meminta penghapusan datamu. Pengguna di bawah 17 tahun sebaiknya mendaftar dengan sepengetahuan orang tua atau wali.</p>
+        </details>
       </section>
     </div>
   );
@@ -339,11 +360,30 @@ function FormPassword({ onSimpan }) {
   );
 }
 
+// Ringkasan subtes (TWK/TIU/TKP): poin dibanding ambang, lulus hanya bila semua subtes lolos.
+function Subtes({ daftar }) {
+  const lulus = daftar.every((x) => x.lolos);
+  return (
+    <div className="kartu" style={{ marginTop: 14 }}>
+      <h3 className="kartu-judul"><Target size={18} className="ic" /> Ambang batas per subtes</h3>
+      <table className="skor"><tbody>
+        <tr><th>Subtes</th><th>Poin</th><th>Ambang</th><th></th></tr>
+        {daftar.map((x) => (
+          <tr key={x.nama}><td>{x.nama}</td><td><b>{x.poin}</b> / {x.maks}</td><td>{x.ambang}</td>
+            <td><span className={`badge ${x.lolos ? "pass" : "fail"}`}>{x.lolos ? "Lolos" : "Belum lolos"}</span></td></tr>
+        ))}
+      </tbody></table>
+      <p className="muted">{lulus ? "Semua subtes mencapai ambang." : "Lulus hanya jika SEMUA subtes mencapai ambang, walau total poin tinggi."} Angka ambang adalah perkiraan; cek pengumuman resmi tiap periode.</p>
+    </div>
+  );
+}
+
 // Tinjau jawaban satu percobaan (dipakai user untuk miliknya dan master untuk semua user).
 function ReviewPanel({ data, onKembali }) {
   const [salahSaja, setSalahSaja] = useState(false);
   const { percobaan: pc, detail, pemilik } = data;
   const benarN = detail.filter((x) => x.j !== null && x.j === x.a).length;
+  const subtes = hitungSubtes(CONFIG.tes.find((t) => t.id === pc.tes), detail);
   return (
     <div className="fade-up">
       <p><button className="btn ghost" onClick={onKembali}><ArrowLeft size={16} /> Kembali</button></p>
@@ -355,6 +395,7 @@ function ReviewPanel({ data, onKembali }) {
           <span className="chip"><CircleCheck size={13} /> {benarN} benar dari {detail.length} soal</span>
         </div>
       </div>
+      {subtes && <Subtes daftar={subtes} />}
       <div className="kartu" style={{ marginTop: 14 }}>
         <div className="filter-row">
           <label><input type="checkbox" checked={salahSaja} onChange={(e) => setSalahSaja(e.target.checked)} /> Tampilkan yang salah saja</label>
@@ -391,7 +432,10 @@ function ReviewPanel({ data, onKembali }) {
 // ---------- aplikasi ----------
 const MENU = [
   { id: "dashboard", Ikon: House, teks: "Dashboard", pendek: "Beranda" },
+  { id: "belajar", Ikon: Brain, teks: "Belajar dari Nol", pendek: "Belajar" },
   { id: "tes", Ikon: ClipboardList, teks: "Daftar Tes", pendek: "Tes" },
+  { id: "tryout", Ikon: Trophy, teks: "Tryout Terjadwal", pendek: "Tryout" },
+  { id: "materi", Ikon: BookOpen, teks: "Materi", pendek: "Materi" },
   { id: "panduan-polri", Ikon: ShieldCheck, teks: "Panduan Polri", pendek: "Polri" },
   { id: "panduan-bumn", Ikon: Building2, teks: "Panduan BUMN", pendek: "BUMN" },
   { id: "riwayat", Ikon: History, teks: "Riwayat", pendek: "Riwayat" },
@@ -402,6 +446,10 @@ export default function App() {
   const [halaman, setHalaman] = useState("dashboard");
   const [temaGelap, setTemaGelap] = useState(false);
   const [user, setUser] = useState(undefined); // undefined = memeriksa sesi, null = belum masuk
+  const [info, setInfo] = useState({ nama: "Simulasi Tes", warna: null, registrasi: "buka" }); // identitas pemasangan
+  const [kodeList, setKodeList] = useState([]);
+  const [belajarAwal, setBelajarAwal] = useState(null); // pintasan ke Belajar: { jenis, topik?, k }
+  const [ulangJatuhTempo, setUlangJatuhTempo] = useState(0);
   const [riwayat, setRiwayat] = useState([]);
   const [masterUsers, setMasterUsers] = useState(null);
   const [masterDetail, setMasterDetail] = useState(null);
@@ -416,7 +464,10 @@ export default function App() {
   const [salahSaja, setSalahSaja] = useState(false);
   const [filterKel, setFilterKel] = useState("Semua");
   const [konfirm, setKonfirm] = useState(null); // {pesan, aksi}
+  const [materiMapel, setMateriMapel] = useState(null); // id mapel terpilih
+  const [materiBab, setMateriBab] = useState(null); // id bab terpilih
   const timerRef = useRef(null);
+  const kirimRef = useRef(false); // tryout sedang dikirim: cegah kirim ganda dari auto-submit
 
   function mintaKonfirmasi(pesan, aksi) { setKonfirm({ pesan, aksi }); }
 
@@ -424,17 +475,44 @@ export default function App() {
   useEffect(() => {
     setTemaGelap(document.documentElement.dataset.tema === "gelap"); // sudah dipasang skrip di layout
     api("/api/auth/me").then((r) => setUser(r.user)).catch(() => setUser(null));
+    api("/api/info").then((r) => {
+      setInfo(r);
+      document.title = r.nama;
+      if (r.warna) document.documentElement.style.setProperty("--brand", r.warna);
+    }).catch(() => {});
   }, []);
   // muat riwayat milik user setelah masuk
   const userId = user ? user.id : null;
   useEffect(() => {
     if (userId) api("/api/attempts").then((r) => setRiwayat(r.percobaan)).catch(() => {});
   }, [userId]);
+  useEffect(() => {
+    if (userId && halaman === "dashboard") api("/api/belajar").then((r) => setUlangJatuhTempo(r.jatuhTempo || 0)).catch(() => {});
+  }, [userId, halaman]);
   const jadiMaster = !!user && user.role === "master";
   useEffect(() => {
-    if (jadiMaster && halaman === "master") api("/api/master/users").then((r) => setMasterUsers(r.users)).catch((e) => setPesan(e.message));
+    if (jadiMaster && halaman === "master") {
+      api("/api/master/users").then((r) => setMasterUsers(r.users)).catch((e) => setPesan(e.message));
+      api("/api/master/kode").then((r) => setKodeList(r.kode)).catch(() => {});
+    }
   }, [jadiMaster, halaman]);
-  function setelahMasuk(u) { setUser(u); setHalaman("dashboard"); setS(null); setHasil(null); }
+  function setelahMasuk(u) {
+    setUser(u); setHalaman("dashboard"); setS(null); setHasil(null);
+    api("/api/auth/me").then((r) => r.user && setUser(r.user)).catch(() => {}); // data lengkap (mis. status tutor)
+  }
+  const sisaHari = user && user.aktifSampai ? Math.ceil((new Date(user.aktifSampai) - Date.now()) / 86400000) : null;
+  const kadaluarsa = !!user && user.role !== "master" && sisaHari !== null && sisaHari <= 0;
+  async function pakaiKode(kode) {
+    const r = await api("/api/kode/pakai", "POST", { kode });
+    setUser((u) => ({ ...u, aktifSampai: r.aktifSampai }));
+    setPesan("Kode berhasil dipakai. Masa aktif sampai " + tgl(r.aktifSampai) + ".");
+  }
+  async function buatKode(f) {
+    const r = await api("/api/master/kode", "POST", f);
+    api("/api/master/kode").then((x) => setKodeList(x.kode)).catch(() => {});
+    return r.kode;
+  }
+  const TERKUNCI = "Masa aktif akunmu habis. Masukkan kode aktivasi di bagian atas halaman untuk lanjut berlatih.";
   async function keluar() {
     try { await api("/api/auth/logout", "POST", {}); } catch {}
     setUser(null); setRiwayat([]); setS(null); setHasil(null); setMasterUsers(null); setMasterDetail(null); setTinjau(null); setHalaman("dashboard");
@@ -480,16 +558,26 @@ export default function App() {
     if (S && S.mode === "ujian" && S.selesai && !hasil) finish(true);
   });
 
+  // tryout terjadwal: simpan jawaban ke server tiap ada perubahan (ditunda 1,5 detik)
+  const tryoutId = S && S.tryoutId && !S.selesai ? S.tryoutId : null;
+  const jawabTryout = tryoutId ? S.jawab : null;
+  useEffect(() => {
+    if (!jawabTryout) return;
+    const t = setTimeout(() => api(`/api/tryout/${tryoutId}/jawab`, "POST", { jawab: jawabTryout }).catch(() => {}), 1500);
+    return () => clearTimeout(t);
+  }, [jawabTryout, tryoutId]);
+
   function gantiHalaman(nama) {
     const lanjut = () => { setS(null); setHasil(null); setHalaman(nama); setLatihanTes(null); };
     if (S && S.mode === "ujian" && !S.selesai && !hasil) {
-      mintaKonfirmasi("Ujian sedang berjalan. Yakin keluar? Progres tidak tersimpan.", lanjut);
+      mintaKonfirmasi(S.tryoutId ? "Tryout sedang berjalan dan waktunya tetap berjalan di server. Yakin keluar? Kamu bisa melanjutkan selama waktu belum habis." : "Ujian sedang berjalan. Yakin keluar? Progres tidak tersimpan.", lanjut);
       return;
     }
     lanjut();
   }
 
   function startUjian(tesId) {
+    if (kadaluarsa) return setPesan(TERKUNCI);
     const tes = CONFIG.tes.find((t) => t.id === tesId);
     const { list, catatan } = susunSoal(tes);
     setHasil(null);
@@ -501,6 +589,7 @@ export default function App() {
     });
   }
   function startLatihan(tesId, topik) {
+    if (kadaluarsa) return setPesan(TERKUNCI);
     const tes = CONFIG.tes.find((t) => t.id === tesId);
     const bank = bankTes(tes);
     const ts = Object.keys(tes.komposisi); // bank bisa dipakai beberapa tes (mis. Tes Bidang)
@@ -511,6 +600,7 @@ export default function App() {
       tes, mode: "latihan", soal: pool.map(shuffleOpts),
       jawab: [], ragu: [], cur: 0, sisa: null, selesai: false,
       topikFilter: topik || "", revealed: {},
+      lvBerjalan: 1, streakB: 0, streakS: 0, // latihan adaptif
     });
   }
 
@@ -536,7 +626,39 @@ export default function App() {
       setHasil((x) => x && { ...x, simpan: "gagal", pesan: e.message });
     }
   }
+  // Tryout terjadwal: soal dari server (tanpa kunci), tenggat mengikuti jam server.
+  async function startTryout(id) {
+    if (kadaluarsa) return setPesan(TERKUNCI);
+    try {
+      const r = await api(`/api/tryout/${id}/mulai`, "POST", {});
+      if (r.selesai) return bukaTinjau(r.attemptId, "tryout");
+      const sisaMs = r.tenggatMs - r.sekarangMs;
+      kirimRef.current = false;
+      setHasil(null);
+      setS({
+        tes: { id: r.tes, nama: r.judul, durasiMenit: r.durasiMenit }, mode: "ujian", soal: r.soal, catatan: [], tryoutId: id,
+        jawab: r.jawab, ragu: new Array(r.soal.length).fill(false),
+        cur: 0, sisa: Math.ceil(sisaMs / 1000), akhir: Date.now() + sisaMs, selesai: false,
+      });
+    } catch (e) { setPesan(e.message); }
+  }
+  async function kirimTryout() {
+    if (kirimRef.current) return;
+    kirimRef.current = true;
+    clearInterval(timerRef.current);
+    try {
+      const r = await api(`/api/tryout/${S.tryoutId}/selesai`, "POST", { jawab: S.jawab });
+      setS(null); setHalaman("tryout");
+      await bukaTinjau(r.id, "tryout");
+      setPesan(r.telat ? "Waktu sudah habis: yang dinilai adalah jawaban tersimpan terakhir." : "Tryout terkumpul. Lihat posisimu di menu Tryout Terjadwal → Peringkat.");
+      api("/api/attempts").then((x) => setRiwayat(x.percobaan)).catch(() => {});
+    } catch (e) {
+      // kirimRef tetap true supaya auto-submit tidak mengulang terus; kirim ulang hanya atas perintah user
+      mintaKonfirmasi(`Jawaban belum terkirim (${e.message}).\nJawaban terakhirmu sudah tersimpan otomatis di server. Kirim lagi?`, () => { kirimRef.current = false; kirimTryout(); });
+    }
+  }
   function finish(otomatis) {
+    if (S.tryoutId) { if (!otomatis) kirimRef.current = false; return kirimTryout(); }
     const h = hitungSemua();
     clearInterval(timerRef.current);
     const durasiPakai = Math.min(S.tes.durasiMenit * 60, S.tes.durasiMenit * 60 - sisaDetik(S));
@@ -585,7 +707,7 @@ export default function App() {
         <aside className="sidebar">
           <div className="logo">
             <div className="logo-ikon"><GraduationCap size={22} aria-hidden="true" /></div>
-            <div>Simulasi Tes<small>POLRI · BUMN</small></div>
+            <div>{info.nama}<small>CPNS · POLRI · BUMN</small></div>
           </div>
           <div className="menu-label">Menu</div>
           {menuAktif.map((m) => (
@@ -594,7 +716,7 @@ export default function App() {
             </button>
           ))}
           <div className="sidebar-foot">
-            <div className="akun"><UserRound size={16} className="ic" /> <div><b>{user.nama}</b><span>{jadiMaster ? "Master" : "@" + user.username}</span></div></div>
+            <div className="akun"><UserRound size={16} className="ic" /> <div><b>{user.nama}</b><span>{jadiMaster ? "Master" : "@" + user.username}{user.aktifSampai && !jadiMaster ? " · aktif s/d " + new Date(user.aktifSampai).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : ""}</span></div></div>
             <button className="btn ghost besar" onClick={keluar}><LogOut size={16} /> Keluar</button>
           </div>
         </aside>
@@ -602,11 +724,18 @@ export default function App() {
           <div className="topbar">
             <div><h2>{judul}</h2><div className="salam">{sub}</div></div>
             <div className="spacer"></div>
-            <div className="pill-info"><InfinityIcon size={15} className="ic" aria-hidden="true" /> {CONFIG.tes.length} tes · soal tak terhingga</div>
+            <div className="pill-info"><InfinityIcon size={15} className="ic" aria-hidden="true" /> {CONFIG.tes.length} tes · miliaran variasi soal</div>
             <button className="tombol-tema" onClick={ubahTema} title="Ganti tema" aria-label="Ganti tema">{temaGelap ? <Sun size={18} /> : <Moon size={18} />}</button>
             <button className="tombol-tema tombol-keluar" onClick={keluar} title="Keluar" aria-label="Keluar"><LogOut size={18} /></button>
           </div>
           {pesan && <div className="info-pesan" role="status">{pesan} <button className="aksi" onClick={() => setPesan("")} aria-label="Tutup"><X size={14} /></button></div>}
+          {user.aktifSampai && user.role !== "master" && (kadaluarsa || sisaHari <= 7) && (
+            <div className="kartu" role={kadaluarsa ? "alert" : "status"} style={{ marginBottom: 14 }}>
+              <h3 className="kartu-judul"><Lock size={18} className="ic" /> {kadaluarsa ? "Masa aktif akunmu sudah habis" : `Masa aktif tersisa ${sisaHari} hari`}</h3>
+              <p className="muted">{kadaluarsa ? "Riwayat dan hasilmu tetap bisa dilihat. Masukkan kode aktivasi dari bimbelmu untuk lanjut berlatih." : `Berakhir ${tgl(user.aktifSampai)}. Kode baru menambah masa aktif dari sisa waktu yang ada.`}</p>
+              <FormKode onPakai={pakaiKode} />
+            </div>
+          )}
           {isi}
         </main>
         <nav className="bottomnav" aria-label="Menu utama">
@@ -639,11 +768,19 @@ export default function App() {
           </div>
         </section>
         <Banner />
+        {user.role !== "master" && ulangJatuhTempo > 0 && (
+          <div className="kartu fade-up" style={{ marginTop: 16 }}>
+            <h3 className="kartu-judul"><RotateCcw size={18} className="ic" /> Buku salah: {ulangJatuhTempo} soal jatuh tempo hari ini</h3>
+            <p className="muted">Soal yang dulu kamu salahkan muncul lagi sekarang. Mengerjakan ulang soal salah menaikkan nilai lebih cepat daripada soal baru.</p>
+            <button className="btn primary" onClick={() => { setBelajarAwal({ jenis: "ulang", k: Date.now() }); gantiHalaman("belajar"); }}><Play size={16} /> Kerjakan ulangan</button>
+          </div>
+        )}
+        {user.role !== "master" && <Rencana />}
         <div className="baris-stat fade-up d1">
           <Stat Ikon={ClipboardList} nilai={<CountUp nilai={agg.n} />} label="Total percobaan" />
           <Stat Ikon={Target} kelas="biru" nilai={<><CountUp nilai={agg.rata} desimal={1} />%</>} label="Skor rata-rata" />
           <Stat Ikon={ChartColumn} kelas="hijau" nilai={<CountUp nilai={agg.topikArr.length} />} label="Topik terlacak" />
-          <Stat Ikon={Library} kelas="kuning" nilai={<CountUp nilai={totalSoal} />} label="Soal di bank (+∞ generator)" />
+          <Stat Ikon={Library} kelas="kuning" nilai={<CountUp nilai={totalSoal} />} label="Soal tertulis di bank (+ miliaran variasi dari generator)" />
         </div>
         <div className="grid-utama">
           <div className="kartu fade-up d2">
@@ -697,6 +834,7 @@ export default function App() {
                 <div className="goal" key={t.topik}>
                   <div className="goal-atas"><b><IkonTopik t={t.topik} size={17} /> {t.topik}</b><span className="muted">{t.pct}%</span></div>
                   <div className="bar"><span style={{ width: Math.min(100, t.pct) + "%", background: "linear-gradient(90deg,var(--warn),var(--bad))" }}></span></div>
+                  <div style={{ marginTop: 6 }}><button className="btn" onClick={() => latihTopik(t.topik)}><Play size={14} className="ic" /> Latih topik ini</button></div>
                 </div>
               ))}
               <p className="muted" style={{ margin: "8px 0 0" }}>Saran: buka <b>Daftar Tes → Mode Latihan</b>, filter topik di atas, lalu ulangi sampai stabil di atas 70%.</p>
@@ -709,27 +847,27 @@ export default function App() {
 
   // ---------- daftar tes ----------
   function renderTes() {
-    const kelompok = filterKel === "Semua" ? ["Polri", "BUMN"] : [filterKel];
+    const kelompok = filterKel === "Semua" ? ["CPNS", "Kedinasan", "Polri", "BUMN"] : [filterKel];
     return kerangka(
       "tes", "Daftar Tes", "Pilih tes, kerjakan dengan timer seperti CAT asli, atau latihan per topik.",
       <>
         <Banner />
         <div className="tabs" role="tablist" aria-label="Filter kelompok tes">
-          {["Semua", "Polri", "BUMN"].map((k) => (
+          {["Semua", "CPNS", "Kedinasan", "Polri", "BUMN"].map((k) => (
             <button key={k} role="tab" aria-selected={filterKel === k} className={filterKel === k ? "aktif" : ""} onClick={() => setFilterKel(k)}>{k}</button>
           ))}
         </div>
         {kelompok.map((kel) => (
           <div key={kel}>
             <h2 className="kelompok-title">
-              {kel === "Polri" ? <ShieldCheck size={20} className="ic" style={{ color: "var(--polri)" }} /> : <Building2 size={20} className="ic" style={{ color: "var(--bumn)" }} />}
-              {kel === "Polri" ? "Kepolisian (Polri)" : "Badan Usaha Milik Negara (BUMN)"}
+              {kel === "Polri" ? <ShieldCheck size={20} className="ic" style={{ color: "var(--polri)" }} /> : kel === "CPNS" ? <Landmark size={20} className="ic" /> : kel === "Kedinasan" ? <GraduationCap size={20} className="ic" /> : <Building2 size={20} className="ic" style={{ color: "var(--bumn)" }} />}
+              {kel === "Polri" ? "Kepolisian (Polri)" : kel === "CPNS" ? "CPNS (SKD)" : kel === "Kedinasan" ? "Sekolah Kedinasan (STAN, IPDN, dll.)" : "Badan Usaha Milik Negara (BUMN)"}
             </h2>
             <div className="cards">
               {CONFIG.tes.filter((t) => t.kelompok === kel).map((t, i) => (
                 <div className={`card fade-up d${Math.min(i, 5) + 1}`} key={t.id} data-kel={t.kelompok}>
                   <div className="card-kepala">
-                    <div className="card-ikon">{kel === "Polri" ? <ShieldCheck size={22} aria-hidden="true" /> : <Building2 size={22} aria-hidden="true" />}</div>
+                    <div className="card-ikon">{kel === "Polri" ? <ShieldCheck size={22} aria-hidden="true" /> : kel === "CPNS" ? <Landmark size={22} aria-hidden="true" /> : kel === "Kedinasan" ? <GraduationCap size={22} aria-hidden="true" /> : <Building2 size={22} aria-hidden="true" />}</div>
                     <div><div className="kel">{kel}{t.jenis ? " · " + t.jenis : ""}</div><h3>{t.nama}</h3></div>
                   </div>
                   <div className="chips">
@@ -763,6 +901,66 @@ export default function App() {
         <div className="panduan" dangerouslySetInnerHTML={{ __html: PANDUAN[jalur] }} />
         <p style={{ marginTop: 14 }}><button className="btn ghost" onClick={() => gantiHalaman("tes")}>← Ke Daftar Tes</button></p>
       </>
+    );
+  }
+
+  // ---------- materi ----------
+  function renderMateri() {
+    const mapel = MATERI.mapel.find((m) => m.id === materiMapel) || null;
+    const bab = mapel && mapel.bab.find((b) => b.id === materiBab) || null;
+    let isi;
+    if (bab) {
+      const jelas = PENJELASAN[bab.id];
+      isi = (
+        <>
+          <div className="kartu">
+            <p className="kartu-judul"><button className="aksi" onClick={() => setMateriBab(null)}>← Semua bab</button></p>
+            <h3 style={{ margin: "0 0 10px" }}>{bab.judul}</h3>
+            {jelas && (
+              <div style={{ background: "var(--brand-soft, rgba(99,102,241,.1))", borderRadius: 10, padding: "12px 16px", marginBottom: 16, maxWidth: 860 }}>
+                <b style={{ fontSize: ".85rem" }}>Penjelasan singkat (baca dulu sebelum membuka halaman modul):</b>
+                {jelas.split("\n\n").map((p, i) => <p key={i} style={{ margin: "8px 0 0", fontSize: ".92rem", color: "var(--muted)", lineHeight: 1.7 }}>{p}</p>)}
+              </div>
+            )}
+            <div style={{ display: "grid", gap: 14 }}>
+              {bab.img.map((s) => (
+                <a key={s} href={s} target="_blank" rel="noreferrer">
+                  <img src={s} alt={bab.judul} loading="lazy" style={{ width: "100%", maxWidth: 860, display: "block", margin: "0 auto", border: "1px solid var(--border)", borderRadius: 8 }} />
+                </a>
+              ))}
+            </div>
+          </div>
+          <p style={{ marginTop: 14 }}><button className="btn ghost" onClick={() => gantiHalaman("tes")}>← Ke Daftar Tes (latihan soal)</button></p>
+        </>
+      );
+    } else if (mapel) {
+      isi = (
+        <>
+          <p style={{ marginBottom: 12 }}><button className="btn ghost" onClick={() => setMateriMapel(null)}>← Semua mapel</button></p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 10 }}>
+            {mapel.bab.map((b) => (
+              <button key={b.id} className="btn ghost" style={{ justifyContent: "flex-start", textAlign: "left", padding: "12px 14px" }} onClick={() => setMateriBab(b.id)}>
+                <BookOpen size={15} style={{ flex: "none" }} /> <span>{b.judul}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      );
+    } else {
+      isi = (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 12 }}>
+          {MATERI.mapel.map((m) => (
+            <button key={m.id} className="kartu" style={{ textAlign: "left", cursor: "pointer", fontFamily: "inherit" }} onClick={() => { setMateriMapel(m.id); setMateriBab(null); }}>
+              <p className="kartu-judul" style={{ margin: 0 }}>{m.nama}</p>
+              <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: ".85rem" }}>{m.bab.length} bab materi</p>
+            </button>
+          ))}
+        </div>
+      );
+    }
+    return kerangka(
+      "materi", "Materi", MATERI.judul + " — halaman asli modul lengkap dengan gambar & rumus. Klik gambar untuk memperbesar.",
+      isi
     );
   }
 
@@ -810,6 +1008,7 @@ export default function App() {
           <h3 className="kartu-judul"><UserPlus size={18} className="ic" /> Tambah user</h3>
           <FormUser onSimpan={tambahUser} />
         </div>
+        <KodeMaster daftar={kodeList} onBuat={buatKode} />
         <div className="kartu fade-up d3" style={{ marginTop: 16 }}>
           <h3 className="kartu-judul"><Users size={18} className="ic" /> Daftar user</h3>
           <div className="filter-row"><input className="cari" placeholder="Cari nama atau username" value={cari} onChange={(e) => setCari(e.target.value)} aria-label="Cari user" /></div>
@@ -902,6 +1101,14 @@ export default function App() {
     );
   }
 
+  function latihTopik(topik) {
+    if (kadaluarsa) return setPesan(TERKUNCI);
+    const tes = CONFIG.tes.find((t) => Object.keys(t.komposisi).includes(topik) && GEN.ada(topik))
+      || CONFIG.tes.find((t) => Object.keys(t.komposisi).includes(topik));
+    if (!tes) return setPesan("Topik ini belum tersedia untuk latihan.");
+    startLatihan(tes.id, topik);
+  }
+
   // ---------- layar ujian ----------
   function renderUjian() {
     const soal = S.soal[S.cur];
@@ -914,7 +1121,11 @@ export default function App() {
       if (S.mode === "ujian") {
         setS({ ...S, jawab: S.jawab.map((x, i) => (i === S.cur ? (x === j ? null : j) : x)) });
       } else {
-        setS({ ...S, revealed: { ...S.revealed, [S.cur]: j } });
+        const benar = j === S.soal[S.cur].ans;
+        let lvBerjalan = S.lvBerjalan || 1, streakB = S.streakB || 0, streakS = S.streakS || 0;
+        if (benar) { streakB += 1; streakS = 0; if (streakB >= 3) { lvBerjalan = Math.min(3, lvBerjalan + 1); streakB = 0; } }
+        else { streakS += 1; streakB = 0; if (streakS >= 2) { lvBerjalan = Math.max(1, lvBerjalan - 1); streakS = 0; } }
+        setS({ ...S, revealed: { ...S.revealed, [S.cur]: j }, lvBerjalan, streakB, streakS });
       }
     };
     return (
@@ -931,7 +1142,10 @@ export default function App() {
           ) : (
             <div className="baris">
               <div className="exam-info"><b><BookOpen size={16} className="ic" /> Latihan — {S.tes.nama}</b> <span>{S.topikFilter ? "topik: " + S.topikFilter + " · " : ""}Soal {S.cur + 1}/{n}</span></div>
-              <div><button className="btn ghost" onClick={() => gantiHalaman("tes")}><X size={16} /> Selesai latihan</button></div>
+              <div className="baris">
+                <span className="pill-info" title="Level kesulitan adaptif: naik setelah 3 benar berurutan, turun setelah 2 salah berurutan"><TrendingUp size={15} className="ic" aria-hidden="true" /> Level {"★".repeat(S.lvBerjalan || 1)}{"☆".repeat(3 - (S.lvBerjalan || 1))}</span>
+                <div><button className="btn ghost" onClick={() => gantiHalaman("tes")}><X size={16} /> Selesai latihan</button></div>
+              </div>
             </div>
           )}
         </div>
@@ -944,6 +1158,7 @@ export default function App() {
                   <span className="stars" title="Tingkat kesulitan">{"★".repeat(soal.level || 1)}{"☆".repeat(3 - (soal.level || 1))}</span>
                 )}
               </div>
+              {S.mode === "latihan" && soal.topik === "Wawasan Kebangsaan" && !soal.verif && <p className="muted">Soal ini belum dicek ke sumber resmi; cocokkan dengan teks resmi sebelum menghafal.</p>}
               <div className="q-text" dangerouslySetInnerHTML={{ __html: soal.q }} />
               <div className="opts">
                 {soal.opts.map((opt, j) => {
@@ -964,6 +1179,7 @@ export default function App() {
                 <div className="bahas">
                   <span className={`key${S.revealed[S.cur] === soal.ans ? "" : " salah"}`}>{S.revealed[S.cur] === soal.ans ? <><CircleCheck size={17} className="ic" /> Benar!</> : <><CircleX size={17} className="ic" /> Kurang tepat.</>}</span> Kunci: <b>{huruf(soal.ans)}</b><br />
                   <span dangerouslySetInnerHTML={{ __html: soal.bahas }} />
+                  {soal.sumber && <><br /><span className="muted">Sumber: {soal.sumber}</span></>}
                 </div>
               )}
             </div>
@@ -975,7 +1191,7 @@ export default function App() {
                 </button>
               )}
               {(S.cur < n - 1 || (S.mode === "latihan" && topikLatihan(S).some(GEN.ada))) && (
-                <button className="btn primary" onClick={() => setS(S.cur === n - 1 ? { ...S, soal: S.soal.concat(GEN.lagi(topikLatihan(S), 10).map(shuffleOpts)), cur: S.cur + 1 } : { ...S, cur: S.cur + 1 })}>Berikutnya <ChevronRight size={16} /></button>
+                <button className="btn primary" onClick={() => setS(S.cur === n - 1 ? { ...S, soal: S.soal.concat(GEN.lagi(topikLatihan(S), 10, S.lvBerjalan).map(shuffleOpts)), cur: S.cur + 1 } : { ...S, cur: S.cur + 1 })}>Berikutnya <ChevronRight size={16} /></button>
               )}
               {S.mode === "ujian" && (
                 <button className="btn danger" onClick={() => mintaKonfirmasi(`Selesaikan ujian?\nBelum dijawab: ${belumN} soal\nRagu-ragu: ${raguN} soal`, () => finish(false))}><Check size={16} /> <span className="lbl">Selesai</span></button>
@@ -1013,7 +1229,8 @@ export default function App() {
   // ---------- layar hasil ----------
   function renderHasilLayar() {
     const { h, otomatis } = hasil;
-    const lulus = h.pct >= S.tes.passingGrade;
+    const subtes = hitungSubtes(S.tes, S.soal.map((x, i) => ({ t: x.topik, a: x.ans, j: S.jawab[i], s: x.skor || undefined })));
+    const lulus = subtes ? subtes.every((x) => x.lolos) : h.pct >= S.tes.passingGrade;
     const topikSorted = Object.keys(h.perTopik)
       .map((t) => ({ t, pct: h.perTopik[t].maks ? Math.round((h.perTopik[t].skor / h.perTopik[t].maks) * 1000) / 10 : 0 }))
       .sort((a, b) => b.pct - a.pct);
@@ -1037,14 +1254,15 @@ export default function App() {
             <div style={{ flex: 1, minWidth: 220 }}>
               <h3 style={{ margin: "0 0 6px" }}>{S.tes.nama}</h3>
               <div className="muted">
-                {otomatis ? "Waktu habis — dikumpulkan otomatis. " : ""}{S.tes.durasiMenit} menit · {S.soal.length} soal · passing grade {S.tes.passingGrade}% (perkiraan)
+                {otomatis ? "Waktu habis — dikumpulkan otomatis. " : ""}{S.tes.durasiMenit} menit · {S.soal.length} soal{subtes ? "" : ` · passing grade ${S.tes.passingGrade}% (perkiraan)`}
               </div>
               <div style={{ marginTop: 10 }}>
-                <span className={`badge ${lulus ? "pass" : "fail"}`}>{lulus ? <CircleCheck size={15} /> : <CircleX size={15} />} {lulus ? "Di atas" : "Di bawah"} passing grade (perkiraan)</span>
+                <span className={`badge ${lulus ? "pass" : "fail"}`}>{lulus ? <CircleCheck size={15} /> : <CircleX size={15} />} {subtes ? (lulus ? "Semua subtes di atas ambang" : "Ada subtes di bawah ambang") : (lulus ? "Di atas" : "Di bawah") + " passing grade (perkiraan)"}</span>
               </div>
             </div>
           </div>
         </div>
+        {subtes && <Subtes daftar={subtes} />}
         <div className="kartu" style={{ marginTop: 14 }}>
           <h3 className="kartu-judul"><ChartColumn size={18} className="ic" /> Skor per topik</h3>
           <table className="skor">
@@ -1087,6 +1305,7 @@ export default function App() {
           })}
         </div>
         <p style={{ marginTop: 14 }}>
+          {lemah.length > 0 && lemah[0].pct < 80 && <><button className="btn primary" onClick={() => { setBelajarAwal({ jenis: "remedial", topik: lemah.filter((r) => r.pct < 80).map((r) => r.t), k: Date.now() }); gantiHalaman("belajar"); }}><Target size={16} /> Perbaiki kekurangan</button>{" "}</>}
           <button className="btn ghost" onClick={() => gantiHalaman("dashboard")}><ArrowLeft size={16} /> Dashboard</button>{" "}
           <button className="btn" onClick={() => gantiHalaman("tes")}><RotateCcw size={16} /> Coba lagi</button>{" "}
           <button className="btn" onClick={() => gantiHalaman("riwayat")}><History size={16} /> Riwayat</button>
@@ -1097,18 +1316,22 @@ export default function App() {
 
   // ---------- render utama ----------
   if (user === undefined) return <div className="splash" role="status">Memuat…</div>;
-  if (user === null) return <AuthScreen onMasuk={setelahMasuk} temaGelap={temaGelap} ubahTema={ubahTema} />;
+  if (user === null) return <AuthScreen onMasuk={setelahMasuk} temaGelap={temaGelap} ubahTema={ubahTema} info={info} />;
   let isi;
   if (hasil) isi = renderHasilLayar();
   else if (S) isi = renderUjian();
   else if (halaman === "tes") isi = renderTes();
   else if (halaman === "panduan-polri") isi = renderPanduan("polri");
   else if (halaman === "panduan-bumn") isi = renderPanduan("bumn");
+  else if (halaman === "materi") isi = renderMateri();
   else if (halaman === "riwayat") isi = renderRiwayat();
+  else if (halaman === "belajar") isi = kerangka("belajar", "Belajar dari Nol", "Diagnosis, kartu konsep, latihan bertingkat, dan ulangan soal yang pernah salah.", <Belajar terkunci={kadaluarsa} awal={belajarAwal} />);
+  else if (halaman === "tryout") isi = kerangka("tryout", "Tryout Terjadwal", "Paket soal sama untuk semua peserta, dinilai server, lalu diperingkat.",
+    <Tryout user={user} onMulai={startTryout} onTinjau={(id) => bukaTinjau(id, "tryout")} />);
   else if (halaman === "master" && jadiMaster) isi = renderMaster();
   else if (halaman === "master-user" && jadiMaster && masterDetail) isi = renderMasterUser();
   else if (halaman === "tinjau" && tinjau) {
-    isi = kerangka(kembaliKe === "master-user" ? "master" : "riwayat", "Tinjau jawaban", "Jawaban, kunci, dan pembahasan setiap soal.",
+    isi = kerangka(kembaliKe === "master-user" ? "master" : kembaliKe, "Tinjau jawaban", "Jawaban, kunci, dan pembahasan setiap soal.",
       <ReviewPanel data={tinjau} onKembali={() => setHalaman(kembaliKe)} />);
   } else isi = renderDashboard();
 
